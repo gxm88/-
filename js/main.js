@@ -3,6 +3,7 @@ import { Game } from './Game.js';
 import { UIManager } from './UI.js';
 import { getLevel, getStars } from './LevelData.js';
 import { GLOBAL_UPGRADE_COSTS } from './Tower.js';
+import { EndlessGame } from './EndlessGame.js';
 
 const SAVE_KEY = 'geoTD_save';
 
@@ -12,6 +13,11 @@ class App {
     this.ui = new UIManager();
     this.game = new Game(this.sceneManager, this.ui);
     this.currentLevelId = 1;
+
+    // 无尽模式
+    this.endlessCanvas = document.getElementById('endless-canvas');
+    this.endlessGame = new EndlessGame(this.endlessCanvas);
+    this.endlessBuildMode = null;
 
     // 全局状态（持久化）
     this.globalCoins = 0;
@@ -65,6 +71,12 @@ class App {
     this.ui.onNavigateToUpgrade = () => this.navigateToUpgrade();
     this.ui.onNavigateToHome = () => this.navigateToHome();
 
+    // 无尽模式入口
+    const btnEndless = document.getElementById('btn-endless');
+    if (btnEndless) {
+      btnEndless.addEventListener('click', () => this.navigateToEndless());
+    }
+
     // 关卡选择
     this.ui.onSelectLevel = (levelId) => this.startLevel(levelId);
 
@@ -80,12 +92,16 @@ class App {
 
     // 全局升级
     this.ui.onGlobalUpgrade = (type) => this.doGlobalUpgrade(type);
+
+    // 无尽模式
+    this.setupEndlessCallbacks();
   }
 
   // ===== 页面导航 =====
   navigateToHome() {
     this.game.cleanup();
     this.clearScene();
+    this.endlessGame.stop();
     this.ui.updateHomeCoins(this.globalCoins);
     this.ui.showHomePage();
   }
@@ -98,6 +114,20 @@ class App {
   navigateToUpgrade() {
     this.ui.renderUpgradeList(this.globalTowerLevels, this.globalCoins);
     this.ui.showUpgradePage();
+  }
+
+  navigateToEndless() {
+    this.game.cleanup();
+    this.clearScene();
+    this.ui.pageHome.classList.add('hidden');
+    this.ui.pageLevels.classList.add('hidden');
+    this.ui.pageUpgrade.classList.add('hidden');
+    this.ui.pageGame.classList.add('hidden');
+    this.endlessGame.start();
+    document.getElementById('page-endless').classList.remove('hidden');
+    document.getElementById('endless-hud').classList.remove('hidden');
+    document.getElementById('endless-panel').classList.remove('hidden');
+    document.getElementById('endless-overlay').classList.add('hidden');
   }
 
   // ===== 全局塔升级 =====
@@ -152,7 +182,6 @@ class App {
     const level = getLevel(this.currentLevelId);
     const stars = getStars(this.game.lives, level.startLives);
 
-    // 解锁和星级
     this.levelStars[this.currentLevelId] = Math.max(this.levelStars[this.currentLevelId] || 0, stars);
     if (this.currentLevelId === this.unlockedLevels && stars >= 1) {
       this.unlockedLevels = Math.min(this.unlockedLevels + 1, 5);
@@ -166,6 +195,98 @@ class App {
     } else {
       this.navigateToHome();
     }
+  }
+
+  // ===== 无尽模式回调 =====
+  setupEndlessCallbacks() {
+    // 返回按钮
+    document.getElementById('btn-endless-back').addEventListener('click', () => {
+      this.navigateToHome();
+    });
+
+    // 底部面板按钮
+    const panelBtns = document.querySelectorAll('#endless-panel .endless-panel-btn');
+    panelBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        panelBtns.forEach(b => b.classList.remove('selected'));
+        if (this.endlessBuildMode === action) {
+          this.endlessBuildMode = null;
+          this.endlessGame.setBuildMode(null);
+        } else {
+          this.endlessBuildMode = action;
+          this.endlessGame.setBuildMode(action);
+          btn.classList.add('selected');
+        }
+      });
+    });
+
+    // Canvas 输入
+    this.endlessCanvas.addEventListener('mousedown', (e) => {
+      this.endlessGame.handleMouseDown(e.offsetX * devicePixelRatio, e.offsetY * devicePixelRatio);
+    });
+    this.endlessCanvas.addEventListener('mousemove', (e) => {
+      this.endlessGame.handleMouseMove(e.offsetX * devicePixelRatio, e.offsetY * devicePixelRatio);
+    });
+    this.endlessCanvas.addEventListener('mouseup', (e) => {
+      this.endlessGame.handleMouseUp(e.offsetX * devicePixelRatio, e.offsetY * devicePixelRatio);
+    });
+    this.endlessCanvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      this.endlessGame.handleWheel(e.deltaY);
+    });
+
+    // 触摸事件
+    this.endlessCanvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      const rect = this.endlessCanvas.getBoundingClientRect();
+      this.endlessGame.handleMouseDown(
+        (t.clientX - rect.left) * devicePixelRatio,
+        (t.clientY - rect.top) * devicePixelRatio
+      );
+    });
+    this.endlessCanvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      const rect = this.endlessCanvas.getBoundingClientRect();
+      this.endlessGame.handleMouseMove(
+        (t.clientX - rect.left) * devicePixelRatio,
+        (t.clientY - rect.top) * devicePixelRatio
+      );
+    });
+    this.endlessCanvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      const rect = this.endlessCanvas.getBoundingClientRect();
+      this.endlessGame.handleMouseUp(
+        (t.clientX - rect.left) * devicePixelRatio,
+        (t.clientY - rect.top) * devicePixelRatio
+      );
+    });
+
+    // HUD 更新
+    this.endlessGame.onHUDUpdate = (data) => {
+      document.getElementById('endless-wood').textContent = data.wood;
+      document.getElementById('endless-stone').textContent = data.stone;
+      document.getElementById('endless-coins').textContent = data.coins;
+      document.getElementById('endless-time').textContent = data.isNight ? '🌑 黑夜' : '☀️ 白天';
+      document.getElementById('endless-day').textContent = data.dayNum;
+    };
+
+    // 游戏结束
+    this.endlessGame.onGameOver = (dayNum, kills) => {
+      document.getElementById('endless-result-days').textContent = dayNum;
+      document.getElementById('endless-result-kills').textContent = kills;
+      document.getElementById('endless-overlay').classList.remove('hidden');
+      document.getElementById('endless-hud').classList.add('hidden');
+      document.getElementById('endless-panel').classList.add('hidden');
+    };
+
+    // 重新开始
+    document.getElementById('endless-restart-btn').addEventListener('click', () => {
+      this.navigateToEndless();
+    });
   }
 }
 
