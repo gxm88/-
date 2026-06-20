@@ -326,6 +326,7 @@ export class Game {
   cleanup() {
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
     }
     this.clearAll();
   }
