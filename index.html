@@ -178,10 +178,18 @@
       <button class="endless-panel-btn" data-action="worker" title="工人 🪵25">
         <span class="ep-icon">◈</span><span class="ep-label">工人</span>
       </button>
-      <button class="endless-panel-btn" data-action="upgrade" title="点击升级塔/墙">
-        <span class="ep-icon">⬆</span><span class="ep-label">升级</span>
-      </button>
-      <span class="endless-tip">左键选中工人再点资源/移动 · 右键拖动视角</span>
+      <span class="endless-tip">长按工人拖到资源采集 · 右键拖动地图</span>
+    </div>
+
+    <!-- 点击实体弹出的信息面板 -->
+    <div id="entity-info-panel" class="entity-info hidden">
+      <div class="eip-header">
+        <span class="eip-icon" id="eip-icon">◈</span>
+        <span class="eip-name" id="eip-name">工人</span>
+        <button class="eip-close" id="eip-close">✕</button>
+      </div>
+      <div class="eip-stats" id="eip-stats"></div>
+      <div class="eip-actions" id="eip-actions"></div>
     </div>
     <!-- 游戏结束覆盖层 -->
     <div id="endless-overlay" class="game-overlay hidden">
