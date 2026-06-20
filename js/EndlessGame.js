@@ -100,10 +100,10 @@ export class EndlessGame {
     this.clock = new THREE.Clock();
     this.animId = null;
 
-    // 相机控制（右键平移 / 中键旋转 / 滚轮缩放
-    this.camAngle = Math.PI / 4;
-    this.camHeight = 18;
-    this.camDist = 22;
+    // 相机控制（右键平移 / 中键水平旋转 / 滚轮缩放，缩放沿视线方向）
+    this.camAngle = Math.PI / 4;       // 水平方位角
+    this.camPitch = Math.atan2(18, 22); // 俯仰角（向上看，arctan(18/22) ≈ 39°）
+    this.camDist = 22;                  // 相机到 target 的直线距离
     this.camTarget = new THREE.Vector3(0, 0, 0);
     this.isPanning = false;
     this.isRotating = false;
@@ -485,9 +485,9 @@ export class EndlessGame {
 
     this.createMap();
 
-    // 重置相机状态并显示渲染器（处理"退出后再进入"的场景
+    // 重置相机状态并显示渲染器（处理"退出后再进入"的场景）
     this.camAngle = Math.PI / 4;
-    this.camHeight = 18;
+    this.camPitch = Math.atan2(18, 22);
     this.camDist = 22;
     this.camTarget.set(0, 0, 0);
     this.updateCamera();
@@ -950,9 +950,13 @@ export class EndlessGame {
 
   // ========== 相机 ==========
   updateCamera() {
-    const x = this.camTarget.x + Math.cos(this.camAngle) * this.camDist;
-    const z = this.camTarget.z + Math.sin(this.camAngle) * this.camDist;
-    this.camera.position.set(x, this.camHeight, z);
+    // 用球坐标（水平角度+俯仰角+距离）计算相机位置
+    // 缩放时只改变 camDist，方向（angle/pitch）保持不变
+    const horizontal = this.camDist * Math.cos(this.camPitch);
+    const x = this.camTarget.x + Math.cos(this.camAngle) * horizontal;
+    const z = this.camTarget.z + Math.sin(this.camAngle) * horizontal;
+    const y = this.camTarget.y + this.camDist * Math.sin(this.camPitch);
+    this.camera.position.set(x, y, z);
     this.camera.lookAt(this.camTarget);
   }
 
