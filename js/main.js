@@ -24,7 +24,7 @@ class App {
     this.globalTowerLevels = { arrow: 1, cannon: 1, ice: 1, lightning: 1 };
     this.unlockedLevels = 1;
     this.levelStars = {};
-    this.pendingReward = 0; // 待领取的金币奖励
+    this.pendingReward = 0;
 
     this.loadSave();
     this.game.setGlobalTowerLevels(this.globalTowerLevels);
@@ -220,6 +220,15 @@ class App {
         }
       });
     });
+
+    // 接收游戏的模式变化回调
+    this.endlessGame.onBuildModeChange = (mode) => {
+      this.endlessBuildMode = mode;
+      panelBtns.forEach(b => {
+        b.classList.remove('selected');
+        if (b.dataset.action === mode) b.classList.add('selected');
+      });
+    };
 
     // Canvas 输入
     this.endlessCanvas.addEventListener('mousedown', (e) => {
