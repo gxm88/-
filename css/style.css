@@ -955,3 +955,108 @@ body {
   border-left: 1px solid rgba(0, 240, 255, 0.1);
   white-space: nowrap;
 }
+
+/* ===== 实体信息面板 ===== */
+.entity-info {
+  position: fixed;
+  top: 70px;
+  right: 16px;
+  width: 200px;
+  background: rgba(8, 12, 28, 0.95);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 10px;
+  z-index: 20;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.08);
+  overflow: hidden;
+}
+
+.entity-info .eip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 240, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+}
+
+.entity-info .eip-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.entity-info .eip-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: #e0eeff;
+  flex: 1;
+  letter-spacing: 1px;
+}
+
+.entity-info .eip-close {
+  background: none;
+  border: none;
+  color: #556688;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 3px;
+  transition: color 0.2s;
+}
+.entity-info .eip-close:hover { color: #ff5555; }
+
+.entity-info .eip-stats {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entity-info .eip-stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8899bb;
+  font-family: 'Orbitron', sans-serif;
+}
+.entity-info .eip-stat-row span:last-child { color: #e0eeff; }
+
+.entity-info .eip-actions {
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid rgba(0, 240, 255, 0.06);
+}
+
+.entity-info .eip-btn {
+  width: 100%;
+  padding: 7px 0;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(0, 240, 255, 0.08);
+  color: #00f0ff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.entity-info .eip-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+.entity-info .eip-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.entity-info .eip-btn.danger {
+  border-color: rgba(255, 80, 80, 0.4);
+  color: #ff6060;
+  background: rgba(255, 80, 80, 0.08);
+}
+.entity-info .eip-btn.danger:hover {
+  background: rgba(255, 80, 80, 0.2);
+}

@@ -134,11 +134,27 @@ export class EndlessGame {
     this.baseHp = 100;
     this.baseMaxHp = 100;
 
-    this.buildMode = null;     // arrow | cannon | ice | lightning | wall | worker | upgrade
+    this.buildMode = null;     // arrow | cannon | ice | lightning | wall | worker
     this.selectedTower = null;  // 选中的塔
-    this.selectedWorker = null; // 选中的工人（拖拽）
-    this.gatheringWorker = null;// 正在采集的工人
-    this.pendingGatherTarget = null;
+    this.selectedWorker = null; // 选中的工人
+
+    // 长按拖拽状态
+    this.isPressing = false;
+    this.pressStartX = 0;
+    this.pressStartY = 0;
+    this.pressStartTime = 0;
+    this.pressedEntity = null;    // 长按开始时按住的实体
+    this.longPressMs = 320;       // 长按判定阈值（毫秒）
+    this.longPressMoved = false;  // 长按期间是否已移动
+    this.isDragging = false;     // 是否正在拖拽工人
+    this.dragTarget = null;      // 拖拽目标 { wx, wz, isResource, resource }
+
+    // 弧线拖拽视觉
+    this.dragArcPoints = [];  // 世界坐标点数组，render() 绘制抛物线
+    // 预建弧线 mesh（避免每帧创建/销毁）
+    this._arcLine = null;
+    this._arcMat = new THREE.LineBasicMaterial({ color: 0x44aaff, linewidth: 2, transparent: true, opacity: 0.7 });
+    this._arcGeo = new THREE.BufferGeometry();
 
     this.onHUDUpdate = null;
     this.onGameOver = null;
@@ -553,10 +569,14 @@ export class EndlessGame {
   cleanup() {
     this.stop();
     this.cleanupWorld();
+    if (this._arcLine) { this.scene.remove(this._arcLine); this._arcLine = null; }
+    if (this._arcGeo) { this._arcGeo.dispose(); this._arcGeo = null; }
+    if (this._arcMat) { this._arcMat.dispose(); this._arcMat = null; }
     if (this.renderer && this.renderer.domElement) {
       this.renderer.domElement.remove();
     }
     window.removeEventListener('resize', this.resize);
+    this.hideEntityPanel();
   }
 
   onResize() {
@@ -570,7 +590,30 @@ export class EndlessGame {
     this.animId = requestAnimationFrame(() => this.animate());
     const delta = Math.min(this.clock.getDelta(), 0.1);
     this.update(delta);
+    // 渲染拖拽弧线
+    this.renderDragArc();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  renderDragArc() {
+    const pts = this.dragArcPoints;
+    if (pts.length < 2) {
+      if (this._arcLine) { this.scene.remove(this._arcLine); this._arcLine = null; }
+      return;
+    }
+    const pos = new Float32Array(pts.length * 3);
+    for (let i = 0; i < pts.length; i++) {
+      pos[i * 3] = pts[i].x;
+      pos[i * 3 + 1] = pts[i].y;
+      pos[i * 3 + 2] = pts[i].z;
+    }
+    this._arcGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this._arcGeo.setDrawRange(0, pts.length);
+    if (!this._arcLine) {
+      this._arcLine = new THREE.Line(this._arcGeo, this._arcMat);
+      this.scene.add(this._arcLine);
+    }
+    this._arcLine.geometry.attributes.position.needsUpdate = true;
   }
 
   update(dt) {
@@ -995,9 +1038,6 @@ export class EndlessGame {
     this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    this.downAt = performance.now();
-    this.downX = e.clientX;
-    this.downY = e.clientY;
 
     // 右键 -> 平移地图
     if (e.button === 2) {
@@ -1015,90 +1055,54 @@ export class EndlessGame {
       return;
     }
 
-    // 若处于建造模式，检查点击的格子标记
+    // 左键
+    this.isPressing = true;
+    this.pressStartX = e.clientX;
+    this.pressStartY = e.clientY;
+    this.pressStartTime = performance.now();
+    this.longPressMoved = false;
+    this.pressedEntity = null;
+
+    // 建造模式：立即放置
     if (this.buildMode && ['arrow','cannon','ice','lightning','wall','worker'].includes(this.buildMode)) {
       const intersects = this.raycaster.intersectObjects(this.markers, false);
       if (intersects.length > 0) {
         const m = intersects[0].object;
         const ud = m.userData;
-        let ok = false;
-        if (this.buildMode === 'wall') ok = this.buildWall(ud.worldX, ud.worldZ);
-        else if (this.buildMode === 'worker') ok = this.buildWorker(ud.worldX, ud.worldZ);
-        else ok = this.buildTower(this.buildMode, ud.worldX, ud.worldZ);
+        if (this.buildMode === 'wall') this.buildWall(ud.worldX, ud.worldZ);
+        else if (this.buildMode === 'worker') this.buildWorker(ud.worldX, ud.worldZ);
+        else this.buildTower(this.buildMode, ud.worldX, ud.worldZ);
         this.updateHUD();
+        this.isPressing = false;
         return;
       }
+      this.isPressing = false;
+      return;
     }
 
-    // 升级模式：点击塔或墙升级
-    if (this.buildMode === 'upgrade') {
-      const towerObjects = this.towers.map(t => t.group);
-      const towerHit = this.raycaster.intersectObjects(towerObjects, true);
-      if (towerHit.length > 0) {
-        const group = findAncestorGroup(towerHit[0].object, towerObjects);
-        const tower = this.towers.find(t => t.group === group);
-        if (tower) this.upgradeTower(tower);
-        this.updateHUD();
-        return;
-      }
-      const wallHit = this.raycaster.intersectObjects(this.walls.map(w => w.mesh), false);
-      if (wallHit.length > 0) {
-        const mesh = wallHit[0].object;
-        const wall = this.walls.find(w => w.mesh === mesh);
-        if (wall) this.upgradeWall(wall);
-        this.updateHUD();
-        return;
-      }
-    }
-
-    // 点击工人（如果有的话）进入拖拽采集模式
-    const workerObjects = this.workers.map(w => w.group);
-    const workerHit = this.raycaster.intersectObjects(workerObjects, true);
-    if (workerHit.length > 0) {
-      const group = findAncestorGroup(workerHit[0].object, workerObjects);
-      const worker = this.workers.find(w => w.group === group);
-      if (worker) {
-        this.selectedWorker = worker;
-        return;
-      }
-    }
-
-    // 否则开始右键/拖拽（已选中工人）
-    if (this.selectedWorker) {
-      // 检查是否点击到资源
-      const resObjects = this.resources.map(r => r.mesh);
-      const resHit = this.raycaster.intersectObjects(resObjects, true);
-      if (resHit.length > 0) {
-        const g = findAncestorGroup(resHit[0].object, resObjects);
-        const resource = this.resources.find(r => r.mesh === g);
-        if (resource) {
-          // 指派工人去采集
-          this.selectedWorker.target = { wx: resource.wx, wz: resource.wz, isResource: true, resource };
-          this.selectedWorker.state = 'moving';
-          this.selectedWorker = null;
-          return;
-        }
-      }
-      // 否则移动到空地
-      const groundHit = this.raycaster.intersectObjects(this.groundMeshes, false);
-      if (groundHit.length > 0) {
-        const pt = groundHit[0].point;
-        this.selectedWorker.target = { wx: pt.x, wz: pt.z };
-        this.selectedWorker.state = 'moving';
-        this.selectedWorker = null;
+    // 检查点到了什么（基地 / 塔 / 工人 / 墙）
+    const entity = this.pickEntity();
+    if (entity) {
+      this.pressedEntity = entity;
+      // 工人：启动长按定时器（320ms 后进入拖拽模式）
+      if (entity.kind === 'worker') {
+        this._longPressTimer = setTimeout(() => {
+          if (this.isPressing && !this.longPressMoved) {
+            this.isDragging = true;
+          }
+        }, this.longPressMs);
       }
     }
   }
 
   onMouseMove(e) {
+    // 右键平移
     if (this.isPanning) {
       const dx = e.clientX - this.lastMouseX;
       const dy = e.clientY - this.lastMouseY;
       const camAng = this.camAngle;
-      const rx = Math.sin(camAng);
-      const rz = -Math.cos(camAng);
-      const fx = -Math.cos(camAng);
-      const fz = -Math.sin(camAng);
+      const rx = Math.sin(camAng), rz = -Math.cos(camAng);
+      const fx = -Math.cos(camAng), fz = -Math.sin(camAng);
       const panFactor = this.camDist * 0.004;
       this.camTarget.x += (-rx * dx + fx * dy) * panFactor;
       this.camTarget.z += (-rz * dx + fz * dy) * panFactor;
@@ -1107,14 +1111,13 @@ export class EndlessGame {
       this.updateCamera();
       return;
     }
+
+    // 中键旋转
     if (this.isRotating) {
       const dx = e.clientX - this.lastMouseX;
       const dy = e.clientY - this.lastMouseY;
-      // 中键左右拖：旋转水平方位角
       this.camAngle += dx * 0.008;
-      // 中键上下拖：改变俯仰角（上下视角）——不碰距离，不缩放
       this.camPitch += dy * 0.006;
-      // 限制俯仰角：近 0° = 平视；约 75° = 俯视
       if (this.camPitch < 0.15) this.camPitch = 0.15;
       if (this.camPitch > 1.3) this.camPitch = 1.3;
       this.lastMouseX = e.clientX;
@@ -1122,11 +1125,208 @@ export class EndlessGame {
       this.updateCamera();
       return;
     }
+
+    // 拖拽工人：计算弧线目标
+    if (this.isDragging && this.pressedEntity && this.pressedEntity.kind === 'worker') {
+      const moved = Math.abs(e.clientX - this.pressStartX) + Math.abs(e.clientY - this.pressStartY);
+      this.longPressMoved = true;
+      const wp = this.screenToWorld(e.clientX, e.clientY);
+      const groundHit = this.raycaster.intersectObjects(this.groundMeshes, false);
+      const resHit = this.raycaster.intersectObjects(this.resources.map(r => r.mesh), true);
+      let target = null;
+      if (resHit.length > 0) {
+        const g = findAncestorGroup(resHit[0].object, this.resources.map(r => r.mesh));
+        target = this.resources.find(r => r.mesh === g);
+      }
+      if (target) {
+        this.dragTarget = { wx: target.wx, wz: target.wz, isResource: true, resource: target };
+      } else if (groundHit.length > 0) {
+        const pt = groundHit[0].point;
+        this.dragTarget = { wx: pt.x, wz: pt.z, isResource: false };
+      }
+      // 更新弧线
+      this.updateDragArc();
+      return;
+    }
+
+    // 长按期间检测是否移动了
+    if (this.isPressing && this.pressedEntity) {
+      const moved = Math.abs(e.clientX - this.pressStartX) + Math.abs(e.clientY - this.pressStartY);
+      if (moved > 8) this.longPressMoved = true;
+    }
   }
 
   onMouseUp(e) {
+    // 清除长按定时器
+    if (this._longPressTimer) { clearTimeout(this._longPressTimer); this._longPressTimer = null; }
+
     this.isPanning = false;
     this.isRotating = false;
+
+    if (!this.isPressing) return;
+    this.isPressing = false;
+
+    // 拖拽状态：释放工人 → 开始采集/移动
+    if (this.isDragging) {
+      this.isDragging = false;
+      this.dragArcPoints = [];
+      if (this.pressedEntity && this.pressedEntity.kind === 'worker' && this.dragTarget) {
+        const worker = this.pressedEntity.worker;
+        worker.target = { ...this.dragTarget };
+        worker.state = 'moving';
+      }
+      this.pressedEntity = null;
+      this.dragTarget = null;
+      return;
+    }
+
+    // 如果长按期间移动了，不触发短按（拖拽取消）
+    if (this.longPressMoved) {
+      this.longPressMoved = false;
+      this.pressedEntity = null;
+      return;
+    }
+
+    // 短按 = 显示实体信息面板
+    const entity = this.pickEntity();
+    if (entity) {
+      this.showEntityPanel(entity);
+    } else {
+      this.hideEntityPanel();
+    }
+    this.pressedEntity = null;
+  }
+
+  // 从射线检测中判断点到了什么实体
+  pickEntity() {
+    // 基地
+    if (this.baseGroup) {
+      const hits = this.raycaster.intersectObjects([this.baseGroup], true);
+      if (hits.length > 0) {
+        return { kind: 'base', name: '基地', icon: '🏰',
+          stats: [
+            { label: '血量', value: `${Math.floor(this.baseHp)} / ${this.baseMaxHp}` },
+            { label: '状态', value: this.baseHp > 0 ? '正常' : '沦陷' }
+          ],
+          actions: []
+        };
+      }
+    }
+    // 塔
+    for (const t of this.towers) {
+      const hits = this.raycaster.intersectObjects([t.group], true);
+      if (hits.length > 0) {
+        const cfg = t.config;
+        const upgCost = t.level < t.maxLevel ? cfg.upgradeCosts[t.level] : null;
+        return {
+          kind: 'tower', name: cfg.name, icon: cfg.icon || '△',
+          entity: t,
+          stats: [
+            { label: '等级', value: `${t.level} / ${t.maxLevel}` },
+            { label: '伤害', value: Math.floor(t.damage) },
+            { label: '射程', value: t.range.toFixed(1) },
+            { label: '攻速', value: t.fireRate.toFixed(1) + '/s' }
+          ],
+          actions: upgCost !== null ? [
+            { label: `升级 (💰${upgCost})`, action: () => this.upgradeTower(t) }
+          ] : [{ label: '已满级', disabled: true }]
+        };
+      }
+    }
+    // 工人
+    for (const w of this.workers) {
+      const hits = this.raycaster.intersectObjects([w.group], true);
+      if (hits.length > 0) {
+        return {
+          kind: 'worker', name: '工人', icon: '◈',
+          entity: w,
+          stats: [
+            { label: '状态', value: w.state === 'idle' ? '空闲' : w.state === 'gathering' ? '采集中' : '移动中' }
+          ],
+          actions: [
+            { label: '长按拖拽采集', disabled: true }
+          ]
+        };
+      }
+    }
+    // 墙
+    for (const wall of this.walls) {
+      const hits = this.raycaster.intersectObjects([wall.mesh], false);
+      if (hits.length > 0) {
+        const lvl = wall.level || 1;
+        const upgCost = lvl < 3 ? 40 + lvl * 20 : null;
+        return {
+          kind: 'wall', name: '围墙', icon: '▣',
+          entity: wall,
+          stats: [
+            { label: '血量', value: `${Math.floor(wall.hp)} / ${wall.maxHp}` },
+            { label: '等级', value: lvl }
+          ],
+          actions: upgCost !== null ? [
+            { label: `升级 (💰${upgCost})`, action: () => this.upgradeWall(wall) }
+          ] : [{ label: '已满级', disabled: true }]
+        };
+      }
+    }
+    return null;
+  }
+
+  showEntityPanel(entity) {
+    const panel = document.getElementById('entity-info-panel');
+    if (!panel) return;
+    document.getElementById('eip-icon').textContent = entity.icon;
+    document.getElementById('eip-name').textContent = entity.name;
+    const statsEl = document.getElementById('eip-stats');
+    statsEl.innerHTML = entity.stats.map(s =>
+      `<div class="eip-stat-row"><span>${s.label}</span><span>${s.value}</span></div>`
+    ).join('');
+    const actionsEl = document.getElementById('eip-actions');
+    actionsEl.innerHTML = '';
+    for (const a of entity.actions) {
+      const btn = document.createElement('button');
+      btn.className = 'eip-btn' + (a.disabled ? ' disabled' : '');
+      btn.textContent = a.label;
+      if (!a.disabled) btn.onclick = () => { a.action(); this.hideEntityPanel(); };
+      actionsEl.appendChild(btn);
+    }
+    panel.classList.remove('hidden');
+  }
+
+  hideEntityPanel() {
+    const panel = document.getElementById('entity-info-panel');
+    if (panel) panel.classList.add('hidden');
+  }
+
+  screenToWorld(clientX, clientY) {
+    const mx = (clientX / window.innerWidth) * 2 - 1;
+    const my = -(clientY / window.innerHeight) * 2 + 1;
+    const r = new THREE.Raycaster();
+    r.setFromCamera(new THREE.Vector2(mx, my), this.camera);
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const pt = new THREE.Vector3();
+    r.ray.intersectPlane(groundPlane, pt);
+    return pt;
+  }
+
+  updateDragArc() {
+    if (!this.pressedEntity || !this.dragTarget) { this.dragArcPoints = []; return; }
+    const worker = this.pressedEntity.worker;
+    if (!worker) { this.dragArcPoints = []; return; }
+    const sx = worker.group.position.x;
+    const sz = worker.group.position.z;
+    const tx = this.dragTarget.wx;
+    const tz = this.dragTarget.wz;
+    const dist = Math.sqrt((tx - sx) ** 2 + (tz - sz) ** 2);
+    const steps = Math.max(8, Math.floor(dist / CELL_SIZE) * 2);
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = sx + (tx - sx) * t;
+      const z = sz + (tz - sz) * t;
+      const arcH = Math.sin(t * Math.PI) * Math.min(dist * 0.35, 3);
+      pts.push(new THREE.Vector3(x, arcH + 0.3, z));
+    }
+    this.dragArcPoints = pts;
   }
 
   onWheel(e) {
