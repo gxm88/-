@@ -1109,8 +1109,14 @@ export class EndlessGame {
     }
     if (this.isRotating) {
       const dx = e.clientX - this.lastMouseX;
-      // 只做水平旋转——中键上下拖不再动相机高度
+      const dy = e.clientY - this.lastMouseY;
+      // 中键左右拖：旋转水平方位角
       this.camAngle += dx * 0.008;
+      // 中键上下拖：改变俯仰角（上下视角）——不碰距离，不缩放
+      this.camPitch += dy * 0.006;
+      // 限制俯仰角：近 0° = 平视；约 75° = 俯视
+      if (this.camPitch < 0.15) this.camPitch = 0.15;
+      if (this.camPitch > 1.3) this.camPitch = 1.3;
       this.lastMouseX = e.clientX;
       this.lastMouseY = e.clientY;
       this.updateCamera();
@@ -1124,7 +1130,7 @@ export class EndlessGame {
   }
 
   onWheel(e) {
-    // 滚轮只缩放相机距离（向上滚=缩小距离=拉近视角；向下滚=拉大距离=拉远）
+    // 滚轮只缩放相机距离（向上滚=拉近；向下滚=拉远）
     const scale = Math.pow(0.92, -e.deltaY / 100);
     this.camDist = Math.max(8, Math.min(55, this.camDist * scale));
     this.updateCamera();
