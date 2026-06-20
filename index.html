@@ -129,7 +129,7 @@
 
   <!-- ==================== 无尽模式页 ==================== -->
   <div id="page-endless" class="hidden">
-    <canvas id="endless-canvas"></canvas>
+    <div id="endless-world"></div>
     <!-- HUD -->
     <div id="endless-hud">
       <button class="back-btn" id="btn-endless-back" title="返回主页">🏠</button>
@@ -153,31 +153,35 @@
         <span class="endless-hud-label">🌊 天数</span>
         <span class="endless-hud-value" id="endless-day">1</span>
       </div>
+      <div class="endless-hud-item">
+        <span class="endless-hud-label">💠 基地</span>
+        <span class="endless-hud-value" id="endless-hp">100</span>
+      </div>
     </div>
     <!-- 底部操作栏 -->
     <div id="endless-panel">
-      <button class="endless-panel-btn" data-action="arrow" title="箭塔 30🪵10🪨">
+      <button class="endless-panel-btn" data-action="arrow" title="箭塔 💰50">
         <span class="ep-icon">△</span><span class="ep-label">箭塔</span>
       </button>
-      <button class="endless-panel-btn" data-action="cannon" title="炮塔 50🪵25🪨">
-        <span class="ep-icon">□</span><span class="ep-label">炮塔</span>
+      <button class="endless-panel-btn" data-action="cannon" title="炮塔 💰100">
+        <span class="ep-icon">■</span><span class="ep-label">炮塔</span>
       </button>
-      <button class="endless-panel-btn" data-action="ice" title="冰塔 40🪵15🪨">
-        <span class="ep-icon">⬡</span><span class="ep-label">冰塔</span>
+      <button class="endless-panel-btn" data-action="ice" title="冰塔 💰75">
+        <span class="ep-icon">◆</span><span class="ep-label">冰塔</span>
       </button>
-      <button class="endless-panel-btn" data-action="lightning" title="雷塔 60🪵40🪨">
-        <span class="ep-icon">⬠</span><span class="ep-label">雷塔</span>
+      <button class="endless-panel-btn" data-action="lightning" title="雷塔 💰150">
+        <span class="ep-icon">⬢</span><span class="ep-label">雷塔</span>
       </button>
-      <button class="endless-panel-btn" data-action="wall" title="围墙 10🪵">
-        <span class="ep-icon">🧱</span><span class="ep-label">围墙</span>
+      <button class="endless-panel-btn" data-action="wall" title="围墙 🪵20">
+        <span class="ep-icon">▣</span><span class="ep-label">围墙</span>
       </button>
-      <button class="endless-panel-btn" data-action="worker" title="工人 20🪵">
-        <span class="ep-icon">◇</span><span class="ep-label">工人</span>
+      <button class="endless-panel-btn" data-action="worker" title="工人 🪵25">
+        <span class="ep-icon">◈</span><span class="ep-label">工人</span>
       </button>
       <button class="endless-panel-btn" data-action="upgrade" title="点击升级塔/墙">
         <span class="ep-icon">⬆</span><span class="ep-label">升级</span>
       </button>
-      <span class="endless-tip">拖拽工人到资源采集</span>
+      <span class="endless-tip">左键选中工人再点资源/移动 · 右键拖动视角</span>
     </div>
     <!-- 游戏结束覆盖层 -->
     <div id="endless-overlay" class="game-overlay hidden">
@@ -185,14 +189,8 @@
         <h1 class="overlay-title fail">基地陷落</h1>
         <p class="overlay-subtitle">BASE DESTROYED</p>
         <div class="overlay-stats">
-          <div class="ostat">
-            <span class="ostat-label">存活天数</span>
-            <span class="ostat-value" id="endless-result-days">1</span>
-          </div>
-          <div class="ostat">
-            <span class="ostat-label">击杀数</span>
-            <span class="ostat-value" id="endless-result-kills">0</span>
-          </div>
+          <div class="ostat"><span class="ostat-label">存活天数</span><span class="ostat-value" id="endless-result-days">1</span></div>
+          <div class="ostat"><span class="ostat-label">击杀数</span><span class="ostat-value" id="endless-result-kills">0</span></div>
         </div>
         <div class="overlay-buttons">
           <button id="endless-restart-btn" class="action-btn">重新开始</button>

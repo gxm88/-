@@ -15,8 +15,8 @@ class App {
     this.currentLevelId = 1;
 
     // 无尽模式
-    this.endlessCanvas = document.getElementById('endless-canvas');
-    this.endlessGame = new EndlessGame(this.endlessCanvas);
+    this.endlessContainer = document.getElementById('endless-world');
+    this.endlessGame = new EndlessGame(this.endlessContainer);
     this.endlessBuildMode = null;
 
     // 全局状态（持久化）
@@ -123,11 +123,13 @@ class App {
     this.ui.pageLevels.classList.add('hidden');
     this.ui.pageUpgrade.classList.add('hidden');
     this.ui.pageGame.classList.add('hidden');
-    this.endlessGame.start();
     document.getElementById('page-endless').classList.remove('hidden');
-    document.getElementById('endless-hud').classList.remove('hidden');
-    document.getElementById('endless-panel').classList.remove('hidden');
     document.getElementById('endless-overlay').classList.add('hidden');
+    // 重置面板按钮
+    document.querySelectorAll('#endless-panel .endless-panel-btn').forEach(b => b.classList.remove('selected'));
+    this.endlessBuildMode = null;
+    // 启动 3D 世界
+    this.endlessGame.start();
   }
 
   // ===== 全局塔升级 =====
@@ -221,50 +223,6 @@ class App {
       });
     });
 
-    // 接收游戏的模式变化回调
-    this.endlessGame.onBuildModeChange = (mode) => {
-      this.endlessBuildMode = mode;
-      panelBtns.forEach(b => {
-        b.classList.remove('selected');
-        if (b.dataset.action === mode) b.classList.add('selected');
-      });
-    };
-
-    // Canvas 输入 — 全部使用 CSS 像素（offsetX/clientX），与 EndlessGame 的 resize() 保持一致
-    this.endlessCanvas.addEventListener('mousedown', (e) => {
-      this.endlessGame.handleMouseDown(e.offsetX, e.offsetY);
-    });
-    this.endlessCanvas.addEventListener('mousemove', (e) => {
-      this.endlessGame.handleMouseMove(e.offsetX, e.offsetY);
-    });
-    this.endlessCanvas.addEventListener('mouseup', (e) => {
-      this.endlessGame.handleMouseUp(e.offsetX, e.offsetY);
-    });
-    this.endlessCanvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      this.endlessGame.handleWheel(e.deltaY);
-    });
-
-    // 触摸事件
-    this.endlessCanvas.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      const t = e.touches[0];
-      const rect = this.endlessCanvas.getBoundingClientRect();
-      this.endlessGame.handleMouseDown(t.clientX - rect.left, t.clientY - rect.top);
-    });
-    this.endlessCanvas.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      const t = e.touches[0];
-      const rect = this.endlessCanvas.getBoundingClientRect();
-      this.endlessGame.handleMouseMove(t.clientX - rect.left, t.clientY - rect.top);
-    });
-    this.endlessCanvas.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      const t = e.changedTouches[0];
-      const rect = this.endlessCanvas.getBoundingClientRect();
-      this.endlessGame.handleMouseUp(t.clientX - rect.left, t.clientY - rect.top);
-    });
-
     // HUD 更新
     this.endlessGame.onHUDUpdate = (data) => {
       document.getElementById('endless-wood').textContent = data.wood;
@@ -272,6 +230,7 @@ class App {
       document.getElementById('endless-coins').textContent = data.coins;
       document.getElementById('endless-time').textContent = data.isNight ? '🌑 黑夜' : '☀️ 白天';
       document.getElementById('endless-day').textContent = data.dayNum;
+      document.getElementById('endless-hp').textContent = data.hp;
     };
 
     // 游戏结束
@@ -279,8 +238,6 @@ class App {
       document.getElementById('endless-result-days').textContent = dayNum;
       document.getElementById('endless-result-kills').textContent = kills;
       document.getElementById('endless-overlay').classList.remove('hidden');
-      document.getElementById('endless-hud').classList.add('hidden');
-      document.getElementById('endless-panel').classList.add('hidden');
     };
 
     // 重新开始

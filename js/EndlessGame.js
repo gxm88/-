@@ -1,1095 +1,1130 @@
-// 无尽生存模式 - 2D 塔防
-// 网格地图 | 战争迷雾 | 多塔类型 | 升级系统 | 怪物同步关卡模式
+import * as THREE from 'three';
+import { TOWER_CONFIGS } from './Tower.js';
+import { ENEMY_CONFIGS } from './Enemy.js';
 
-const TILE = 40;
-const WORLD_W = 256;
-const WORLD_H = 256;
-const BASE_X = 128;
-const BASE_Y = 128;
-const BASE_RADIUS = 4;
-
-// 地形
+// 地形类型
 const GRASS = 0;
 const TREE = 1;
 const ROCK = 2;
-const WATER = 3;
-const GOLD = 4;
+const GOLD = 3;
+const WATER = 4;
 
-// 迷雾
-const FOG_HIDDEN = 0;   // 从未探索
-const FOG_VISIBLE = 2;  // 当前可见
-const FOG_EXPLORED = 1; // 已探索但当前不可见
+// 常量
+const GRID_SIZE = 25;       // 网格格数
+const CELL_SIZE = 1.2;      // 每格世界尺寸
+const DAY_LEN = 40;         // 白天时长（秒）
+const NIGHT_LEN = 20;       // 夜晚时长
 
-// 资源属性
-const RES_INFO = {
-  [TREE]: { name: 'tree', hp: 40, reward: 5, color: '#3a8a3a', colorNight: '#1a3a1a' },
-  [ROCK]: { name: 'rock', hp: 70, reward: 4, color: '#8a8a8a', colorNight: '#4a4a4a' },
-  [GOLD]: { name: 'gold', hp: 55, reward: 8, color: '#ffd700', colorNight: '#8a6a00' }
-};
-
-// 昼夜(秒)
-const DAY_LEN = 75;
-const NIGHT_LEN = 35;
-
-// 激光参数
-const LASER_RANGE = TILE * 1.2;
-const LASER_DPS = 22;
-
-// ===== 塔类型（与关卡模式同步） =====
-const TOWER_TYPES = {
-  arrow: {
-    name: '箭塔', type: 'arrow', sides: 3, color: '#00f0ff', colorNight: '#005566',
-    range: 2.5, damage: 25, fireRate: 1.0, costWood: 30, costStone: 10,
-    upgradeCosts: [0, 60, 120], upgradeDamage: [25, 35, 50], upgradeRange: [2.5, 2.7, 3.0]
-  },
-  cannon: {
-    name: '炮塔', type: 'cannon', sides: 4, color: '#ff3333', colorNight: '#661111',
-    range: 2.0, damage: 60, fireRate: 0.5, costWood: 50, costStone: 25,
-    upgradeCosts: [0, 100, 200], upgradeDamage: [60, 90, 130], upgradeRange: [2.0, 2.2, 2.5]
-  },
-  ice: {
-    name: '冰塔', type: 'ice', sides: 6, color: '#66ccff', colorNight: '#224466',
-    range: 2.2, damage: 15, fireRate: 1.2, costWood: 40, costStone: 15,
-    upgradeCosts: [0, 80, 150], upgradeDamage: [15, 22, 32], upgradeRange: [2.2, 2.5, 2.8]
-  },
-  lightning: {
-    name: '雷塔', type: 'lightning', sides: 5, color: '#ffff00', colorNight: '#666600',
-    range: 3.0, damage: 40, fireRate: 0.8, costWood: 60, costStone: 40,
-    upgradeCosts: [0, 130, 250], upgradeDamage: [40, 60, 85], upgradeRange: [3.0, 3.3, 3.8]
-  }
-};
-
-// ===== 怪物配置（同步关卡模式 Enemy.js） =====
-const ENEMY_TYPES = [
-  { type: 'smallCube', name: '小方块', sides: 4, color: '#00ff88', hp: 100, speed: 40, damage: 5, reward: 10, tier: 1 },
-  { type: 'pyramid', name: '棱锥怪', sides: 3, color: '#ff6600', hp: 200, speed: 32, damage: 8, reward: 20, tier: 2 },
-  { type: 'cylinder', name: '圆柱兽', sides: 6, color: '#ff2d95', hp: 350, speed: 28, damage: 12, reward: 30, tier: 3 },
-  { type: 'sphere', name: '球体王', sides: 0, color: '#b44dff', hp: 600, speed: 22, damage: 18, reward: 50, tier: 4 },
-  { type: 'boss', name: '星形Boss', sides: 5, color: '#ffd700', hp: 1500, speed: 16, damage: 30, reward: 100, tier: 5, isStar: true }
-];
-
-// ===== 噪音函数 =====
-function noise2D(x, y) {
-  let n = Math.sin(x * 14.319 + y * 52.117) * 49321.723;
-  n += Math.sin(x * 37.291 + y * 19.487) * 28741.551;
-  n += Math.sin(x * 67.883 + y * 43.911) * 19531.229;
-  return (n - Math.floor(n) + 1) % 1;
+// 简易噪音（哈希伪随机）
+function pseudoNoise(x, y, seed = 0) {
+  const X = Math.sin(x * 12.9898 + y * 78.233 + seed * 37.719) * 43758.5453;
+  return X - Math.floor(X);
 }
 
-function getTerrain(x, y) {
-  const dx = x - BASE_X, dy = y - BASE_Y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < BASE_RADIUS + 1) return GRASS;
-  const n = noise2D(x * 0.7, y * 0.7);
-  const n2 = noise2D(x * 1.3 + 5, y * 1.3 + 5);
-  if (dist < BASE_RADIUS + 3) {
-    if (n < 0.12) return TREE;
-    if (n < 0.18) return ROCK;
-    return GRASS;
-  }
-  if (n2 < 0.04) return WATER;
-  if (n < 0.08) return GOLD;
-  if (n < 0.22) return ROCK;
-  if (n < 0.42) return TREE;
+function terrainNoise(x, y) {
+  let n = 0;
+  n += pseudoNoise(x, y, 1) * 0.5;
+  n += pseudoNoise(x * 2.3, y * 2.3, 2) * 0.25;
+  n += pseudoNoise(x * 4.7, y * 4.7, 3) * 0.125;
+  return n;
+}
+
+function getTerrainType(col, row) {
+  const cx = (GRID_SIZE - 1) / 2;
+  const cz = (GRID_SIZE - 1) / 2;
+  const dist = Math.sqrt((col - cx) ** 2 + (row - cz) ** 2);
+  // 基地周边 2 格 — 必定是草地
+  if (dist < 3) return GRASS;
+
+  const n = terrainNoise(col * 0.3, row * 0.3);
+  if (n < 0.05) return WATER;
+  if (n < 0.25) return TREE;
+  if (n < 0.4) return ROCK;
+  if (n < 0.48) return GOLD;
   return GRASS;
 }
 
-// ===== 多边形绘制工具 =====
-function drawPolygon(ctx, cx, cy, radius, sides, rotation = 0) {
-  ctx.beginPath();
-  for (let i = 0; i < sides; i++) {
-    const a = rotation + (i * Math.PI * 2) / sides;
-    const x = cx + Math.cos(a) * radius;
-    const y = cy + Math.sin(a) * radius;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-}
-
-function drawDiamond(ctx, cx, cy, rx, ry, rotation = 0) {
-  ctx.beginPath();
-  const pts = [[0, -ry], [rx, 0], [0, ry], [-rx, 0]];
-  for (let i = 0; i < 4; i++) {
-    const c = Math.cos(rotation), s = Math.sin(rotation);
-    const x = cx + pts[i][0] * c - pts[i][1] * s;
-    const y = cy + pts[i][0] * s + pts[i][1] * c;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-}
-
-function drawStar(ctx, cx, cy, outerR, innerR, points, rotation = 0) {
-  ctx.beginPath();
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const a = rotation + (i * Math.PI) / points;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-}
-
-// 绘制程序化纹理围墙
-function drawWallTexture(ctx, cx, cy, size, night) {
-  const h = size * 0.8;
-  // 主体
-  ctx.fillStyle = night ? '#4a4a3a' : '#8a8a6a';
-  drawPolygon(ctx, cx, cy, h * 0.5, 4, Math.PI / 4);
-  ctx.fill();
-  // 十字纹理
-  ctx.strokeStyle = night ? '#2a2a1a' : '#5a5a3a';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(cx - h * 0.35, cy - h * 0.35);
-  ctx.lineTo(cx + h * 0.35, cy + h * 0.35);
-  ctx.moveTo(cx + h * 0.35, cy - h * 0.35);
-  ctx.lineTo(cx - h * 0.35, cy + h * 0.35);
-  ctx.stroke();
-  // 边框
-  ctx.strokeStyle = night ? '#3a3a2a' : '#6a6a4a';
-  ctx.lineWidth = 2;
-  drawPolygon(ctx, cx, cy, h * 0.5, 4, Math.PI / 4);
-  ctx.stroke();
-  // 小砖块纹理
-  ctx.fillStyle = night ? '#3a3a2a' : '#6a6a4a';
-  ctx.fillRect(cx - 3, cy - h * 0.15, 6, 6);
-  ctx.fillRect(cx - 3, cy + h * 0.05, 6, 6);
-}
-
 export class EndlessGame {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+  constructor(container) {
+    this.container = container;
+
+    // 场景
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x0a0a1a);
+    this.scene.fog = new THREE.Fog(0x0a0a1a, 10, 40);
+
+    // 相机
+    this.camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      200
+    );
+    this.camera.position.set(14, 18, 14);
+    this.camera.lookAt(0, 0, 0);
+
+    // 渲染器
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.2;
+    container.appendChild(this.renderer.domElement);
+
+    // 光照
+    this.ambientLight = new THREE.AmbientLight(0x8888ff, 0.7);
+    this.scene.add(this.ambientLight);
+    this.sunLight = new THREE.DirectionalLight(0xffffcc, 1.6);
+    this.sunLight.position.set(12, 20, 8);
+    this.sunLight.castShadow = true;
+    this.sunLight.shadow.mapSize.width = 2048;
+    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.camera.near = 0.5;
+    this.sunLight.shadow.camera.far = 100;
+    this.sunLight.shadow.camera.left = -30;
+    this.sunLight.shadow.camera.right = 30;
+    this.sunLight.shadow.camera.top = 30;
+    this.sunLight.shadow.camera.bottom = -30;
+    this.scene.add(this.sunLight);
+
+    const fill = new THREE.DirectionalLight(0x555599, 0.5);
+    fill.position.set(-8, 6, -8);
+    this.scene.add(fill);
+
+    // 工具
+    this.raycaster = new THREE.Raycaster();
+    this.raycaster.far = 80;
+    this.mouse = new THREE.Vector2();
+    this.clock = new THREE.Clock();
+    this.animId = null;
+
+    // 相机控制（鼠标右键拖拽 / 滚轮缩放）
+    this.camAngle = Math.PI / 4;
+    this.camHeight = 18;
+    this.camDist = 22;
+    this.camTarget = new THREE.Vector3(0, 0, 0);
+    this.isPanning = false;
+    this.lastMouseX = 0;
+    this.lastMouseY = 0;
 
     this.towers = [];
     this.walls = [];
     this.workers = [];
     this.enemies = [];
-    this.projectiles = [];
+    this.resources = [];       // {type, hp, maxHp, mesh, col, row}
+    this.markers = [];          // 可建造标记
+    this.lasers = [];           // 激光束（视觉）
+    this.rangeRings = [];
+    this.groundMeshes = [];
+    this.gridLineGroup = null;
 
-    this.baseHP = 100;
-    this.baseMaxHP = 100;
-    this.baseRadius = BASE_RADIUS;
-
+    // 游戏状态
     this.wood = 50;
     this.stone = 30;
     this.coins = 100;
-
-    this.dayTime = 0;
     this.dayNum = 1;
+    this.dayTime = 0;
     this.isNight = false;
     this.nightSpawnTimer = 0;
-    this.enemiesThisNight = 0;
-    this.maxEnemiesPerNight = 4;
+    this.nightEnemiesToSpawn = 0;
     this.kills = 0;
+    this.baseHp = 100;
+    this.baseMaxHp = 100;
 
-    this.camX = BASE_X * TILE - 400;
-    this.camY = BASE_Y * TILE - 240;
-    this.zoom = 1;
-    this.targetZoom = 1;
+    this.buildMode = null;     // arrow | cannon | ice | lightning | wall | worker | upgrade
+    this.selectedTower = null;  // 选中的塔
+    this.selectedWorker = null; // 选中的工人（拖拽）
+    this.gatheringWorker = null;// 正在采集的工人
+    this.pendingGatherTarget = null;
 
-    this.dragging = false;
-    this.dragStartX = 0;
-    this.dragStartY = 0;
-    this.dragCamX = 0;
-    this.dragCamY = 0;
-    this.dragUnit = null;
-    this.dragUnitLine = null;
+    this.onHUDUpdate = null;
+    this.onGameOver = null;
 
-    this.buildMode = null;  // 'arrow'|'cannon'|'ice'|'lightning'|'wall'|'worker'|'upgrade'
-    this.hoverCell = null;
-    this.selectedUnit = null;
+    this.resize = () => this.onResize();
+    window.addEventListener('resize', this.resize);
 
-    this.resourceCache = new Map();
-
-    // 战争迷雾: key(tx,ty) -> FOG_HIDDEN|FOG_EXPLORED|FOG_VISIBLE
-    this.fogMap = new Map();
-
-    this.running = false;
-    this.paused = false;
-
-    this.onResize = () => this.resize();
-    window.addEventListener('resize', this.onResize);
-
-    this.lastTime = 0;
-    this.animId = null;
+    // 输入事件
+    this.setupInput();
   }
 
-  revealArea(cx, cy, radius) {
-    for (let tx = Math.floor(cx - radius); tx <= Math.ceil(cx + radius); tx++) {
-      for (let ty = Math.floor(cy - radius); ty <= Math.ceil(cy + radius); ty++) {
-        const dx = tx - cx, dy = ty - cy;
-        if (dx * dx + dy * dy <= radius * radius) {
-          this.fogMap.set(`${tx},${ty}`, FOG_EXPLORED);
+  // ========== 初始化地图 ==========
+  createMap() {
+    const halfGrid = (GRID_SIZE - 1) / 2;
+
+    // 地面 — 为每格创建一个小方块（根据地形颜色不同）
+    for (let col = 0; col < GRID_SIZE; col++) {
+      for (let row = 0; row < GRID_SIZE; row++) {
+        const terrain = getTerrainType(col, row);
+        const wx = (col - halfGrid) * CELL_SIZE;
+        const wz = (row - halfGrid) * CELL_SIZE;
+
+        // 地面方块
+        let color = 0x3a5a24;
+        let height = 0.15;
+        if (terrain === WATER) color = 0x1a4a8a;
+        else if (terrain === TREE) color = 0x2a5a1a;
+        else if (terrain === ROCK) color = 0x6a6a6a;
+        else if (terrain === GOLD) color = 0x5a4a14;
+
+        const tileGeo = new THREE.BoxGeometry(CELL_SIZE * 0.98, height, CELL_SIZE * 0.98);
+        const tileMat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.1 });
+        const tile = new THREE.Mesh(tileGeo, tileMat);
+        tile.position.set(wx, -height / 2, wz);
+        tile.receiveShadow = true;
+        this.scene.add(tile);
+        this.groundMeshes.push(tile);
+
+        // 可建造标记（草地且非基地）
+        const cx = (GRID_SIZE - 1) / 2;
+        const cz = (GRID_SIZE - 1) / 2;
+        const distFromCenter = Math.sqrt((col - cx) ** 2 + (row - cz) ** 2);
+        const isBase = distFromCenter < 2.5;
+
+        if (terrain === GRASS && !isBase) {
+          const markerGeo = new THREE.PlaneGeometry(CELL_SIZE * 0.9, CELL_SIZE * 0.9);
+          const markerMat = new THREE.MeshBasicMaterial({
+            color: 0x335577,
+            transparent: true,
+            opacity: 0.35,
+            side: THREE.DoubleSide
+          });
+          const marker = new THREE.Mesh(markerGeo, markerMat);
+          marker.rotation.x = -Math.PI / 2;
+          marker.position.set(wx, 0.08, wz);
+          marker.userData = { col, row, worldX: wx, worldZ: wz };
+          marker.visible = false;  // 默认隐藏，进入建造模式才显示
+          this.scene.add(marker);
+          this.markers.push(marker);
         }
+
+        // 资源对象
+        if (terrain === TREE) this.spawnResource('tree', wx, wz, col, row);
+        else if (terrain === ROCK) this.spawnResource('rock', wx, wz, col, row);
+        else if (terrain === GOLD) this.spawnResource('gold', wx, wz, col, row);
       }
+    }
+
+    // 网格线（仅在可见时能看到 — 简单的网格帮助）
+    const gridHelper = new THREE.GridHelper(GRID_SIZE * CELL_SIZE, GRID_SIZE, 0x334455, 0x223344);
+    gridHelper.position.y = 0.02;
+    gridHelper.material.transparent = true;
+    gridHelper.material.opacity = 0.3;
+    this.scene.add(gridHelper);
+    this.gridLineGroup = gridHelper;
+
+    // 基地
+    this.createBase();
+  }
+
+  createBase() {
+    const baseGroup = new THREE.Group();
+
+    // 基座（大立方块）
+    const baseGeo = new THREE.BoxGeometry(CELL_SIZE * 3, 0.6, CELL_SIZE * 3);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: 0x5555aa, emissive: 0x222244, emissiveIntensity: 0.4,
+      roughness: 0.5, metalness: 0.5
+    });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.3;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    baseGroup.add(base);
+
+    // 顶层菱形（八面体）— 中心标志
+    const crystalGeo = new THREE.OctahedronGeometry(0.7);
+    const crystalMat = new THREE.MeshStandardMaterial({
+      color: 0x00ddff, emissive: 0x00aadd, emissiveIntensity: 0.6,
+      roughness: 0.2, metalness: 0.8
+    });
+    const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+    crystal.position.y = 1.6;
+    crystal.castShadow = true;
+    baseGroup.add(crystal);
+    this.baseCrystal = crystal;
+
+    // 4 个小立方在四角
+    const towerColor = 0x7777cc;
+    for (const [dx, dz] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+      const tGeo = new THREE.BoxGeometry(0.6, 1.2, 0.6);
+      const tMat = new THREE.MeshStandardMaterial({
+        color: towerColor, roughness: 0.4, metalness: 0.6
+      });
+      const t = new THREE.Mesh(tGeo, tMat);
+      t.position.set(dx * CELL_SIZE * 0.8, 0.6, dz * CELL_SIZE * 0.8);
+      t.castShadow = true;
+      baseGroup.add(t);
+    }
+
+    this.scene.add(baseGroup);
+    this.baseGroup = baseGroup;
+  }
+
+  spawnResource(kind, wx, wz, col, row) {
+    let geo, color, hp, maxHp;
+    if (kind === 'tree') {
+      // 三角形（圆锥体）+ 小矩形
+      const group = new THREE.Group();
+      const trunkGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6a4a24, roughness: 0.9 });
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.position.y = 0.25;
+      trunk.castShadow = true;
+      group.add(trunk);
+      const leafGeo = new THREE.ConeGeometry(0.4, 0.8, 6);
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x2a7a2a, roughness: 0.6 });
+      const leaf = new THREE.Mesh(leafGeo, leafMat);
+      leaf.position.y = 0.9;
+      leaf.castShadow = true;
+      group.add(leaf);
+      group.position.set(wx, 0, wz);
+      geo = null;
+      color = 0x2a7a2a;
+      hp = 40;
+      this.scene.add(group);
+      this.resources.push({
+        type: 'tree', hp, maxHp: hp, mesh: group, col, row, wx, wz
+      });
+    } else if (kind === 'rock') {
+      const rockGeo = new THREE.DodecahedronGeometry(0.45);
+      const rockMat = new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 0.8, metalness: 0.2 });
+      const rock = new THREE.Mesh(rockGeo, rockMat);
+      rock.position.set(wx, 0.4, wz);
+      rock.rotation.y = Math.random() * Math.PI;
+      rock.castShadow = true;
+      this.scene.add(rock);
+      this.resources.push({
+        type: 'rock', hp: 70, maxHp: 70, mesh: rock, col, row, wx, wz
+      });
+    } else if (kind === 'gold') {
+      const goldGeo = new THREE.IcosahedronGeometry(0.45);
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xffd700, emissive: 0x886600, emissiveIntensity: 0.3,
+        roughness: 0.3, metalness: 0.9
+      });
+      const gold = new THREE.Mesh(goldGeo, goldMat);
+      gold.position.set(wx, 0.45, wz);
+      gold.castShadow = true;
+      this.scene.add(gold);
+      this.resources.push({
+        type: 'gold', hp: 50, maxHp: 50, mesh: gold, col, row, wx, wz
+      });
     }
   }
 
-  updateFog() {
-    // 重置 visible -> explored
-    for (const [k, v] of this.fogMap) {
-      if (v === FOG_VISIBLE) this.fogMap.set(k, FOG_EXPLORED);
-    }
-    // 从所有己方单位更新可见度
-    const revealTile = (wx, wy, r) => {
-      const cx = Math.floor(wx / TILE);
-      const cy = Math.floor(wy / TILE);
-      for (let tx = cx - r; tx <= cx + r; tx++) {
-        for (let ty = cy - r; ty <= cy + r; ty++) {
-          const dx = tx - cx, dy = ty - cy;
-          if (dx * dx + dy * dy <= r * r) {
-            this.fogMap.set(`${tx},${ty}`, FOG_VISIBLE);
-          }
+  // ========== 塔建造 ==========
+  buildTower(type, wx, wz) {
+    const cfg = TOWER_CONFIGS[type];
+    if (!cfg) return;
+    if (this.wood < (cfg.cost * 0.5) || this.stone < (cfg.cost * 0.3)) return false;
+    // 简化：使用金币消耗（与关卡模式一致的 tower_cost）
+    if (this.coins < cfg.cost) return false;
+    this.coins -= cfg.cost;
+
+    const towerGroup = new THREE.Group();
+    towerGroup.position.set(wx, 0, wz);
+
+    // 基座方块
+    const baseGeo = new THREE.BoxGeometry(CELL_SIZE * 0.8, 0.3, CELL_SIZE * 0.8);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x444466, roughness: 0.7 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.15;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    towerGroup.add(base);
+
+    // 塔身（根据类型用不同几何体）
+    let topGeo;
+    if (type === 'arrow') topGeo = new THREE.ConeGeometry(0.35, 1.0, 6);
+    else if (type === 'cannon') topGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+    else if (type === 'ice') topGeo = new THREE.OctahedronGeometry(0.5);
+    else topGeo = new THREE.DodecahedronGeometry(0.5);
+
+    const topMat = new THREE.MeshStandardMaterial({
+      color: cfg.color, emissive: cfg.color, emissiveIntensity: 0.5,
+      roughness: 0.3, metalness: 0.6
+    });
+    const top = new THREE.Mesh(topGeo, topMat);
+    top.position.y = 0.8;
+    top.castShadow = true;
+    towerGroup.add(top);
+
+    // 范围圈（默认隐藏，选中后显示）
+    const ringGeo = new THREE.RingGeometry(cfg.range - 0.05, cfg.range, 48);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: cfg.color, side: THREE.DoubleSide, transparent: true, opacity: 0.25
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.06;
+    ring.visible = false;
+    towerGroup.add(ring);
+
+    this.scene.add(towerGroup);
+
+    const tower = {
+      type, config: cfg, group: towerGroup, top,
+      range: cfg.range, damage: cfg.damage, fireRate: cfg.fireRate,
+      fireTimer: 0, level: 1, maxLevel: 3, ring
+    };
+    this.towers.push(tower);
+    return true;
+  }
+
+  buildWall(wx, wz) {
+    if (this.wood < 20) return false;
+    this.wood -= 20;
+    const wGeo = new THREE.BoxGeometry(CELL_SIZE * 0.95, 0.8, CELL_SIZE * 0.95);
+    const wMat = new THREE.MeshStandardMaterial({ color: 0x887755, roughness: 0.8 });
+    const wall = new THREE.Mesh(wGeo, wMat);
+    wall.position.set(wx, 0.4, wz);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    this.scene.add(wall);
+    this.walls.push({ mesh: wall, hp: 80, maxHp: 80, wx, wz });
+    return true;
+  }
+
+  buildWorker(wx, wz) {
+    if (this.wood < 25) return false;
+    this.wood -= 25;
+    // 菱形体 = OctahedronGeometry
+    const workerGroup = new THREE.Group();
+    const bodyGeo = new THREE.OctahedronGeometry(0.45);
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x44aaff, emissive: 0x2266aa, emissiveIntensity: 0.4,
+      roughness: 0.3, metalness: 0.5
+    });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.5;
+    body.castShadow = true;
+    workerGroup.add(body);
+
+    // 小顶端方块
+    const tipGeo = new THREE.OctahedronGeometry(0.15);
+    const tipMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8
+    });
+    const tip = new THREE.Mesh(tipGeo, tipMat);
+    tip.position.y = 1.1;
+    workerGroup.add(tip);
+
+    workerGroup.position.set(wx, 0, wz);
+    this.scene.add(workerGroup);
+
+    this.workers.push({
+      group: workerGroup, body, tip,
+      wx, wz, target: null, // target resource or {wx,wz}
+      state: 'idle',       // idle | moving | gathering
+      gatherTimer: 0,
+      gatherTarget: null,
+      moveSpeed: 3.5,
+      rotSpeed: 0
+    });
+    return true;
+  }
+
+  // ========== 升级 ==========
+  upgradeTower(tower) {
+    if (!tower || tower.level >= tower.maxLevel) return false;
+    const cost = tower.config.upgradeCosts[tower.level] || Math.floor(tower.config.cost * 0.8);
+    if (this.coins < cost) return false;
+    this.coins -= cost;
+    tower.level++;
+    tower.damage = tower.config.upgradeDamage[tower.level - 1];
+    tower.range = tower.config.upgradeRange[tower.level - 1];
+
+    // 缩放塔身提示
+    const s = 1 + (tower.level - 1) * 0.15;
+    tower.top.scale.set(s, s, s);
+    tower.top.position.y = 0.8 + (tower.level - 1) * 0.1;
+
+    // 更新范围圈几何
+    tower.ring.geometry.dispose();
+    tower.ring.geometry = new THREE.RingGeometry(tower.range - 0.05, tower.range, 48);
+    return true;
+  }
+
+  upgradeWall(wall) {
+    const cost = 40;
+    if (this.coins < cost) return false;
+    if ((wall.level || 1) >= 3) return false;
+    this.coins -= cost;
+    wall.level = (wall.level || 1) + 1;
+    wall.maxHp = 80 + (wall.level - 1) * 60;
+    wall.hp = wall.maxHp;
+    wall.mesh.scale.y = 1 + (wall.level - 1) * 0.3;
+    wall.mesh.position.y = 0.4 * wall.mesh.scale.y;
+    return true;
+  }
+
+  // ========== 游戏开始/结束 ==========
+  start() {
+    // 清理旧的
+    this.cleanupWorld();
+
+    this.towers = [];
+    this.walls = [];
+    this.workers = [];
+    this.enemies = [];
+    this.resources = [];
+    this.markers = [];
+    this.lasers = [];
+    this.wood = 50;
+    this.stone = 30;
+    this.coins = 100;
+    this.dayNum = 1;
+    this.dayTime = 0;
+    this.isNight = false;
+    this.kills = 0;
+    this.baseHp = 100;
+    this.baseMaxHp = 100;
+
+    this.createMap();
+    this.updateCamera();
+    this.updateHUD();
+    if (!this.animId) this.animate();
+  }
+
+  cleanupWorld() {
+    // 清理整个场景中的自定义对象
+    const dispose = (obj) => {
+      obj.traverse(child => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+          else child.material.dispose();
         }
-      }
+      });
+      this.scene.remove(obj);
     };
 
-    revealTile(BASE_X, BASE_Y, BASE_RADIUS + 2);
-    for (const t of this.towers) revealTile(t.x, t.y, Math.ceil(t.range) + 1);
-    for (const w of this.workers) revealTile(w.x, w.y, 3);
-  }
+    this.towers.forEach(t => dispose(t.group));
+    this.walls.forEach(w => this.scene.remove(w.mesh) && w.mesh.geometry.dispose() && w.mesh.material.dispose());
+    this.workers.forEach(w => dispose(w.group));
+    for (const e of this.enemies) dispose(e.group);
+    for (const r of this.resources) dispose(r.mesh);
 
-  // ===== 生命周期 =====
-  start() {
+    for (const m of this.markers) this.scene.remove(m), m.geometry.dispose(), m.material.dispose();
+    for (const g of this.groundMeshes) g.geometry.dispose(), g.material.dispose(), this.scene.remove(g);
+    this.markers = [];
+    this.groundMeshes = [];
+    if (this.gridLineGroup) {
+      this.scene.remove(this.gridLineGroup);
+      this.gridLineGroup.geometry.dispose();
+      this.gridLineGroup.material.dispose();
+    }
+    if (this.baseGroup) dispose(this.baseGroup);
     this.towers = [];
     this.walls = [];
     this.workers = [];
     this.enemies = [];
-    this.projectiles = [];
-    this.baseHP = this.baseMaxHP;
-    this.baseRadius = BASE_RADIUS;
-    this.wood = 50;
-    this.stone = 30;
-    this.coins = 100;
-    this.dayTime = 0;
-    this.dayNum = 1;
-    this.isNight = false;
-    this.nightSpawnTimer = 0;
-    this.enemiesThisNight = 0;
-    this.maxEnemiesPerNight = 4;
-    this.kills = 0;
-    this.zoom = 1;
-    this.targetZoom = 1;
-    this.buildMode = null;
-    this.selectedUnit = null;
-    this.dragUnit = null;
-    this.dragUnitLine = null;
-    this.resourceCache.clear();
-    this.fogMap.clear();
-    this.revealArea(BASE_X, BASE_Y, BASE_RADIUS + 2);
-
-    // 关键：在页面显示后重新计算 canvas 尺寸，并设置相机中心到基地
-    this.resize();
-    this.camX = BASE_X * TILE;
-    this.camY = BASE_Y * TILE;
-
-    this.running = true;
-    this.lastTime = performance.now();
-    this.updateHUD();
-    this.loop();
+    this.resources = [];
   }
 
   stop() {
-    this.running = false;
-    if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
+    if (this.animId) cancelAnimationFrame(this.animId);
+    this.animId = null;
   }
 
   cleanup() {
     this.stop();
-    window.removeEventListener('resize', this.onResize);
+    this.cleanupWorld();
+    if (this.renderer && this.renderer.domElement) {
+      this.renderer.domElement.remove();
+    }
+    window.removeEventListener('resize', this.resize);
   }
 
-  resize() {
-    // 用 CSS 像素（clientWidth/clientHeight），不用 *devicePixelRatio，保证坐标系统与世界单位（TILE=40）一致
-    let cw = this.canvas.clientWidth;
-    let ch = this.canvas.clientHeight;
-    if (!cw || cw < 10) cw = window.innerWidth || 800;
-    if (!ch || ch < 10) ch = window.innerHeight || 600;
-    this.canvas.width = cw;
-    this.canvas.height = ch;
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  onResize() {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  loop() {
-    if (!this.running) return;
-    this.animId = requestAnimationFrame(() => this.loop());
-    const now = performance.now();
-    let dt = (now - this.lastTime) / 1000;
-    this.lastTime = now;
-    if (dt > 0.2) dt = 0.2;
-    if (this.paused) dt = 0;
-    this.update(dt);
-    this.render();
+  // ========== 游戏循环 ==========
+  animate() {
+    this.animId = requestAnimationFrame(() => this.animate());
+    const delta = Math.min(this.clock.getDelta(), 0.1);
+    this.update(delta);
+    this.renderer.render(this.scene, this.camera);
   }
 
-  // ===== 更新 =====
   update(dt) {
+    // 昼夜循环
     this.dayTime += dt;
     const cycleLen = this.isNight ? NIGHT_LEN : DAY_LEN;
     if (this.dayTime >= cycleLen) {
       this.dayTime -= cycleLen;
-      this.isNight = !this.isNight;
       if (this.isNight) {
-        this.enemiesThisNight = 0;
-        this.nightSpawnTimer = 0;
-        this.maxEnemiesPerNight = 4 + this.dayNum * 2;
-      } else {
+        // 白天开始
+        this.isNight = false;
         this.dayNum++;
-        this.coins += 20 + this.dayNum * 5;
+        this.coins += 50 + this.dayNum * 10;
+      } else {
+        this.isNight = true;
+        this.nightEnemiesToSpawn = 4 + Math.floor(this.dayNum * 1.5);
+        this.nightSpawnTimer = 0;
       }
       this.updateHUD();
     }
 
-    if (this.isNight && this.running) {
+    // 光照随昼夜变化
+    const dayProgress = this.dayTime / cycleLen;
+    if (this.isNight) {
+      this.ambientLight.color.setHex(0x222244);
+      this.ambientLight.intensity = 0.4;
+      this.sunLight.color.setHex(0x8888ff);
+      this.sunLight.intensity = 0.6;
+      this.scene.background = new THREE.Color(0x060618);
+      if (this.gridLineGroup) this.gridLineGroup.material.color.set(0x445577);
+    } else {
+      this.ambientLight.color.setHex(0x8888ff);
+      this.ambientLight.intensity = 0.7;
+      this.sunLight.color.setHex(0xffffcc);
+      this.sunLight.intensity = 1.6;
+      this.scene.background = new THREE.Color(0x87a0c7);
+      if (this.gridLineGroup) this.gridLineGroup.material.color.set(0x334455);
+    }
+
+    // 夜晚刷怪
+    if (this.isNight && this.nightEnemiesToSpawn > 0) {
       this.nightSpawnTimer += dt;
-      const interval = Math.max(0.4, 1.5 - this.dayNum * 0.05);
-      if (this.nightSpawnTimer >= interval && this.enemiesThisNight < this.maxEnemiesPerNight) {
+      if (this.nightSpawnTimer >= 1.5) {
         this.nightSpawnTimer = 0;
         this.spawnEnemy();
-        this.enemiesThisNight++;
+        this.nightEnemiesToSpawn--;
       }
     }
 
-    for (const w of this.workers) this.updateWorker(w, dt);
-    for (const e of this.enemies) this.updateEnemy(e, dt);
-    for (const t of this.towers) this.updateTower(t, dt);
+    // 更新工人
+    this.updateWorkers(dt);
+    // 更新敌人
+    this.updateEnemies(dt);
+    // 更新塔
+    this.updateTowers(dt);
+    // 更新激光束
+    this.updateLasers(dt);
 
-    for (const res of this.resourceCache.values()) {
-      if (res.shakeT > 0) res.shakeT -= dt;
+    // 基地水晶旋转
+    if (this.baseCrystal) {
+      this.baseCrystal.rotation.y += dt * 1.5;
+      this.baseCrystal.rotation.x += dt * 0.6;
+      this.baseCrystal.position.y = 1.6 + Math.sin(performance.now() * 0.002) * 0.1;
     }
 
-    this.workers = this.workers.filter(w => w.alive);
-    this.enemies = this.enemies.filter(e => e.alive);
-    this.towers = this.towers.filter(t => t.alive);
-    this.walls = this.walls.filter(w => w.alive);
-
-    for (const e of this.enemies) {
-      const dx = e.x - BASE_X * TILE;
-      const dy = e.y - BASE_Y * TILE;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < TILE * 1.5) {
-        this.baseHP -= e.damage * dt;
-        e.alive = false;
-        if (this.baseHP <= 0) { this.baseHP = 0; this.gameOver(); return; }
-      }
+    // 检查游戏结束
+    if (this.baseHp <= 0 && this.onGameOver) {
+      this.onGameOver(this.dayNum, this.kills);
+      this.onGameOver = null; // 只触发一次
     }
-
-    this.zoom += (this.targetZoom - this.zoom) * 5 * dt;
-    this.updateFog();
-    this.updateHUD();
   }
 
-  updateWorker(w, dt) {
-    if (w.targetResource) {
-      const cached = this.resourceCache.get(w.targetResource.key);
-      if (!cached || cached.hp <= 0) {
-        w.targetResource = null;
-        w.targetX = BASE_X * TILE + (Math.random() - 0.5) * TILE * 2;
-        w.targetY = BASE_Y * TILE + (Math.random() - 0.5) * TILE * 2;
-      } else {
-        const dx = cached.x - w.x, dy = cached.y - w.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > LASER_RANGE) {
-          w.x += (dx / dist) * 80 * dt;
-          w.y += (dy / dist) * 80 * dt;
+  updateWorkers(dt) {
+    const halfGrid = (GRID_SIZE - 1) / 2;
+    for (const worker of this.workers) {
+      // 空闲状态下轻微漂浮
+      worker.tip.rotation.y += dt * 2;
+
+      if (worker.state === 'gathering' && worker.gatherTarget) {
+        worker.gatherTimer -= dt;
+        // 发射激光视觉
+        if (!worker.gatherLaser) {
+          worker.gatherLaser = this.createLaserBeam(worker.group.position, worker.gatherTarget.mesh.position, 0x66ddff);
         } else {
-          cached.hp -= LASER_DPS * dt;
-          cached.shakeT = 0.15;
-          if (cached.hp <= 0) {
-            if (cached.type === TREE) this.wood += RES_INFO[TREE].reward;
-            else if (cached.type === ROCK) this.stone += RES_INFO[ROCK].reward;
-            else if (cached.type === GOLD) this.coins += RES_INFO[GOLD].reward;
-            this.resourceCache.delete(cached.key);
-            w.targetResource = null;
-            w.targetX = BASE_X * TILE + (Math.random() - 0.5) * TILE * 2;
-            w.targetY = BASE_Y * TILE + (Math.random() - 0.5) * TILE * 2;
+          worker.gatherLaser.material.color.setHex(0x66ddff);
+        }
+        // 伤害资源
+        const target = worker.gatherTarget;
+        target.hp -= 35 * dt;
+        if (target.hp <= 0) {
+          // 收集成功
+          if (target.type === 'tree') this.wood += 10;
+          else if (target.type === 'rock') this.stone += 8;
+          else if (target.type === 'gold') this.coins += 30;
+          // 移除资源 mesh
+          target.mesh.traverse(c => {
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) c.material.dispose();
+          });
+          this.scene.remove(target.mesh);
+          // 将格从资源列表中清除，并改造成草地可建造
+          this.resources = this.resources.filter(r => r !== target);
+          // 工人返回
+          worker.gatherTarget = null;
+          if (worker.gatherLaser) this.removeLaserBeam(worker.gatherLaser);
+          worker.gatherLaser = null;
+          worker.state = 'idle';
+          // 给工人指派回到基地
+          worker.target = { wx: 0, wz: 0, isBase: true };
+          this.updateHUD();
+        }
+        continue;
+      }
+
+      // 移动
+      if (worker.target) {
+        const tw = worker.target.wx;
+        const tz = worker.target.wz;
+        const dx = tw - worker.group.position.x;
+        const dz = tz - worker.group.position.z;
+        const dist = Math.sqrt(dx * dx + dy_helper(dx, dz));
+        if (dist < 0.3) {
+          // 到达目标
+          if (worker.target.isResource) {
+            worker.state = 'gathering';
+            worker.gatherTarget = worker.target.resource;
+            worker.gatherTimer = worker.target.resource.hp / 35;
+            worker.target = null;
+          } else {
+            worker.state = 'idle';
+            worker.target = null;
+          }
+          continue;
+        }
+        const speed = worker.moveSpeed;
+        const nx = dx / dist;
+        const nz = dz / dist;
+        worker.group.position.x += nx * speed * dt;
+        worker.group.position.z += nz * speed * dt;
+
+        // 朝向目标
+        const desiredRot = Math.atan2(nx, nz);
+        worker.group.rotation.y = smoothAngle(worker.group.rotation.y, desiredRot, dt * 6);
+        // 身体轻微上下
+        worker.body.position.y = 0.5 + Math.abs(Math.sin(performance.now() * 0.008)) * 0.15;
+      }
+    }
+  }
+
+  updateEnemies(dt) {
+    for (const e of this.enemies) {
+      // 朝向基地
+      const dx = -e.group.position.x;
+      const dz = -e.group.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < 1.2) {
+        // 到达基地
+        this.baseHp -= 10;
+        e.alive = false;
+        continue;
+      }
+      const nx = dx / dist;
+      const nz = dz / dist;
+      e.group.position.x += nx * e.speed * dt;
+      e.group.position.z += nz * e.speed * dt;
+
+      // 检查前方是否有墙
+      for (const wall of this.walls) {
+        if (wall.hp <= 0) continue;
+        const wdx = e.group.position.x - wall.wx;
+        const wdz = e.group.position.z - wall.wz;
+        const wdist = Math.sqrt(wdx * wdx + wdz * wdz);
+        if (wdist < CELL_SIZE * 0.6) {
+          wall.hp -= 15 * dt;
+          // 敌人稍微停住攻击
+          e.group.position.x -= nx * e.speed * dt * 0.7;
+          e.group.position.z -= nz * e.speed * dt * 0.7;
+          if (wall.hp <= 0) {
+            // 销毁墙
+            this.scene.remove(wall.mesh);
+            wall.mesh.geometry.dispose();
+            wall.mesh.material.dispose();
           }
         }
-        return;
+      }
+
+      // 旋转
+      e.mesh.rotation.y += dt * 2;
+      e.mesh.rotation.x += dt * 1.5;
+
+      // 血条朝向相机
+      if (e.healthBar) {
+        e.healthBar.lookAt(this.camera.position);
+        const ratio = Math.max(0, e.hp / e.maxHp);
+        e.healthFill.scale.x = ratio;
+        e.healthFill.position.x = -(1 - ratio) * 0.6;
+        if (ratio < 0.3) e.healthFill.material.color.setHex(0xff3333);
+        else if (ratio < 0.6) e.healthFill.material.color.setHex(0xffaa00);
+        else e.healthFill.material.color.setHex(0x00ff88);
       }
     }
-    const dx = w.targetX - w.x, dy = w.targetY - w.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 4) { w.targetX = w.x; w.targetY = w.y; return; }
-    const speed = 80;
-    w.x += (dx / dist) * speed * dt;
-    w.y += (dy / dist) * speed * dt;
-  }
-
-  updateEnemy(e, dt) {
-    const dx = BASE_X * TILE - e.x, dy = BASE_Y * TILE - e.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 2) return;
-    let blocked = false;
-    for (const wall of this.walls) {
-      const wdx = e.x - wall.x, wdy = e.y - wall.y;
-      if (Math.sqrt(wdx * wdx + wdy * wdy) < TILE * 0.8) {
-        wall.hp -= e.damage * dt * 2;
-        blocked = true;
-        if (wall.hp <= 0) wall.alive = false;
-      }
-    }
-    if (blocked) return;
-    e.x += (dx / dist) * e.speed * dt;
-    e.y += (dy / dist) * e.speed * dt;
-    // 减速恢复
-    if (e.slowTimer > 0) {
-      e.slowTimer -= dt;
-      if (e.slowTimer <= 0) e.speed = e.baseSpeed;
-    }
-  }
-
-  updateTower(t, dt) {
-    t.fireTimer -= dt;
-    if (t.fireTimer > 0) return;
-    let closest = null, closestDist = t.range * TILE;
+    // 清理死亡
     for (const e of this.enemies) {
-      const dx = t.x - e.x, dy = t.y - e.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < closestDist) { closestDist = dist; closest = e; }
+      if (!e.alive) {
+        e.group.traverse(c => {
+          if (c.geometry) c.geometry.dispose();
+          if (c.material) c.material.dispose();
+        });
+        this.scene.remove(e.group);
+      }
     }
-    if (!closest) return;
-    t.fireTimer = t.fireRate;
-    closest.hp -= t.damage;
-    t.beamTarget = closest;
-    t.beamT = 0.12;
-    // 冰塔减速
-    if (t.type === 'ice') {
-      closest.slowTimer = 1.0;
-      closest.speed = closest.baseSpeed * 0.5;
-    }
-    if (closest.hp <= 0) {
-      closest.alive = false;
-      this.kills++;
-      this.coins += closest.reward;
-    }
+    this.enemies = this.enemies.filter(e => e.alive);
+
+    // 墙移除
+    this.walls = this.walls.filter(w => w.hp > 0);
   }
 
   spawnEnemy() {
-    const angle = Math.random() * Math.PI * 2;
-    const spawnDist = 400 + Math.random() * 200;
-    const x = BASE_X * TILE + Math.cos(angle) * spawnDist;
-    const y = BASE_Y * TILE + Math.sin(angle) * spawnDist;
+    // 根据天数选择类型
+    let typeKey;
+    if (this.dayNum >= 12) typeKey = 'boss';
+    else if (this.dayNum >= 8) typeKey = 'sphere';
+    else if (this.dayNum >= 5) typeKey = 'cylinder';
+    else if (this.dayNum >= 3) typeKey = 'pyramid';
+    else typeKey = 'smallCube';
+    if (Math.random() < 0.15) typeKey = Object.keys(ENEMY_CONFIGS)[Math.min(Object.keys(ENEMY_CONFIGS).length - 1,
+      Math.floor(Math.random() * Object.keys(ENEMY_CONFIGS).length))];
 
-    // 根据天数选择怪物类型（同步关卡模式）
-    let idx = 0;
-    if (this.dayNum >= 15) idx = 4;      // boss
-    else if (this.dayNum >= 10) idx = 3; // sphere
-    else if (this.dayNum >= 6) idx = 2;  // cylinder
-    else if (this.dayNum >= 3) idx = 1;  // pyramid
-    // 有小概率出高级怪
-    if (Math.random() < 0.15 && idx < 4) idx = Math.min(idx + 1, 4);
-
-    const cfg = ENEMY_TYPES[idx];
-    const hpScale = 1 + this.dayNum * 0.15;
-    this.enemies.push({
-      x, y,
-      hp: Math.floor(cfg.hp * hpScale),
-      maxHp: Math.floor(cfg.hp * hpScale),
-      damage: cfg.damage + Math.floor(this.dayNum * 0.5),
-      speed: cfg.speed,
-      baseSpeed: cfg.speed,
-      reward: cfg.reward + this.dayNum,
-      alive: true,
-      enemyType: cfg,
-      rot: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 1.5,
-      slowTimer: 0
-    });
-  }
-
-  gameOver() {
-    this.running = false;
-    if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
-    if (this.onGameOver) this.onGameOver(this.dayNum, this.kills);
-  }
-
-  // ===== 渲染 =====
-  render() {
-    const ctx = this.ctx;
-    const w = this.canvas.width, h = this.canvas.height;
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = this.isNight ? '#0a0a18' : '#1a2a10';
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.save();
-    ctx.translate(w / 2, h / 2);
-    ctx.scale(this.zoom, this.zoom);
-    ctx.translate(-this.camX, -this.camY);
-
-    const rect = this.canvas.getBoundingClientRect ? this.canvas : { width: w, height: h };
-    const halfW = w / this.zoom / 2;
-    const halfH = h / this.zoom / 2;
-    const minX = Math.floor((this.camX - halfW) / TILE) - 1;
-    const maxX = Math.ceil((this.camX + halfW) / TILE) + 1;
-    const minY = Math.floor((this.camY - halfH) / TILE) - 1;
-    const maxY = Math.ceil((this.camY + halfH) / TILE) + 1;
-
-    // 绘制地形
-    for (let tx = minX; tx <= maxX; tx++) {
-      for (let ty = minY; ty <= maxY; ty++) {
-        if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
-        const fog = this.fogMap.get(`${tx},${ty}`) || FOG_HIDDEN;
-        if (fog === FOG_HIDDEN) {
-          ctx.fillStyle = this.isNight ? '#060610' : '#0a0a14';
-          ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
-          continue;
-        }
-        const terrain = getTerrain(tx, ty);
-        const px = tx * TILE, py = ty * TILE;
-        if (terrain === WATER) {
-          ctx.fillStyle = this.isNight ? '#0a1a3a' : '#1a4a8a';
-        } else {
-          ctx.fillStyle = this.isNight ? '#1a2a14' : '#3a5a24';
-        }
-        ctx.fillRect(px, py, TILE, TILE);
-
-        if (fog === FOG_EXPLORED) {
-          // 已探索但不可见，画面变暗
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.fillRect(px, py, TILE, TILE);
-          // 不画资源
-          continue;
-        }
-
-        // 资源
-        const key = `${tx},${ty}`;
-        const cached = this.resourceCache.get(key);
-        if (cached) {
-          this.drawResource(ctx, px + TILE / 2, py + TILE / 2, cached.type, cached.hp, cached.maxHp, cached.shakeT);
-          continue;
-        }
-        if (terrain === TREE || terrain === ROCK || terrain === GOLD) {
-          const info = RES_INFO[terrain];
-          this.drawResource(ctx, px + TILE / 2, py + TILE / 2, terrain, info.hp, info.hp, 0);
-        }
-      }
-    }
-
-    // 网格线（仅可见区域）
-    ctx.strokeStyle = this.isNight ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    for (let tx = minX; tx <= maxX; tx++) {
-      ctx.beginPath();
-      ctx.moveTo(tx * TILE, minY * TILE);
-      ctx.lineTo(tx * TILE, (maxY + 1) * TILE);
-      ctx.stroke();
-    }
-    for (let ty = minY; ty <= maxY; ty++) {
-      ctx.beginPath();
-      ctx.moveTo(minX * TILE, ty * TILE);
-      ctx.lineTo((maxX + 1) * TILE, ty * TILE);
-      ctx.stroke();
-    }
-
-    this.drawBase(ctx);
-
-    for (const wall of this.walls) this.drawWall(ctx, wall);
-    for (const t of this.towers) this.drawTower(ctx, t);
-
-    // 工人激光
-    for (const w of this.workers) {
-      if (w.targetResource && this.resourceCache.has(w.targetResource.key)) {
-        this.drawWorkerLaser(ctx, w, this.resourceCache.get(w.targetResource.key));
-      }
-    }
-    for (const w of this.workers) this.drawWorker(ctx, w);
-    for (const e of this.enemies) this.drawEnemy(ctx, e);
-
-    // 塔攻击激光
-    for (const t of this.towers) {
-      if (t.beamT > 0) {
-        t.beamT -= 1 / 60;
-        if (t.beamTarget && t.beamTarget.alive) {
-          const alpha = Math.max(0, t.beamT / 0.12);
-          ctx.strokeStyle = `rgba(120,240,255,${alpha})`;
-          ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(t.beamTarget.x, t.beamTarget.y); ctx.stroke();
-          ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          // 冰塔蓝光
-          if (t.type === 'ice') {
-            ctx.strokeStyle = `rgba(100,180,255,${alpha * 0.6})`;
-            ctx.lineWidth = 5;
-            ctx.stroke();
-          }
-        }
-      }
-    }
-
-    // 拖拽线
-    if (this.dragUnit && this.dragUnitLine) {
-      ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
-      ctx.setLineDash([6, 3]);
-      ctx.beginPath(); ctx.moveTo(this.dragUnit.x, this.dragUnit.y);
-      ctx.lineTo(this.dragUnitLine.x, this.dragUnitLine.y); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // 选中单位高亮
-    if (this.selectedUnit) {
-      ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.selectedUnit.x, this.selectedUnit.y, TILE * 0.6, 0, Math.PI * 2);
-      ctx.stroke();
-      // 升级进度点
-      if (this.selectedUnit.level !== undefined && this.selectedUnit.level < 3) {
-        for (let i = 0; i < this.selectedUnit.level; i++) {
-          ctx.fillStyle = '#ffd700';
-          ctx.beginPath();
-          ctx.arc(this.selectedUnit.x + (i - 1) * 6, this.selectedUnit.y - TILE * 0.55, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-
-    // 建造预览
-    if (this.buildMode && this.hoverCell) {
-      const hx = this.hoverCell.x * TILE + TILE / 2, hy = this.hoverCell.y * TILE + TILE / 2;
-      const terrain = getTerrain(this.hoverCell.x, this.hoverCell.y);
-      const canPlace = terrain === GRASS;
-      ctx.strokeStyle = canPlace ? 'rgba(0,255,136,0.6)' : 'rgba(255,51,51,0.6)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 2]);
-      ctx.beginPath();
-      ctx.rect(this.hoverCell.x * TILE + 2, this.hoverCell.y * TILE + 2, TILE - 4, TILE - 4);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      if (canPlace && TOWER_TYPES[this.buildMode]) {
-        const cfg = TOWER_TYPES[this.buildMode];
-        ctx.fillStyle = (cfg.color + '33');
-        drawPolygon(ctx, hx, hy, TILE * 0.35, cfg.sides);
-        ctx.fill();
-      }
-      if (canPlace && this.buildMode === 'wall') {
-        ctx.fillStyle = 'rgba(138,138,106,0.2)';
-        drawPolygon(ctx, hx, hy, TILE * 0.35, 4, Math.PI / 4);
-        ctx.fill();
-      }
-    }
-
-    ctx.restore();
-
-    if (this.isNight) {
-      ctx.fillStyle = 'rgba(5, 5, 20, 0.35)';
-      ctx.fillRect(0, 0, w, h);
-    }
-
-    this.drawMinimap(ctx, w, h);
-  }
-
-  // ===== 绘制函数 =====
-  drawResource(ctx, cx, cy, type, hp, maxHp, shakeT) {
-    const shake = shakeT > 0 ? (Math.random() - 0.5) * 4 : 0;
-    const sx = cx + shake, sy = cy + shake;
-    if (type === TREE) {
-      ctx.fillStyle = this.isNight ? '#3a2a1a' : '#6a4a24';
-      ctx.fillRect(sx - 3, sy + TILE * 0.05, 6, TILE * 0.3);
-      ctx.fillStyle = this.isNight ? '#1a3a1a' : '#3a8a3a';
-      drawPolygon(ctx, sx, sy - TILE * 0.1, TILE * 0.32, 3, -Math.PI / 2); ctx.fill();
-      ctx.fillStyle = this.isNight ? '#2a4a1a' : '#4a7a2a';
-      drawPolygon(ctx, sx, sy - TILE * 0.15, TILE * 0.18, 3, -Math.PI / 2); ctx.fill();
-    } else if (type === ROCK) {
-      ctx.fillStyle = this.isNight ? '#3a3a3a' : '#8a8a8a';
-      drawPolygon(ctx, sx, sy, TILE * 0.35, 5, Math.PI * 0.1); ctx.fill();
-      ctx.fillStyle = this.isNight ? '#5a5a5a' : '#aaaaaa';
-      drawPolygon(ctx, sx - 2, sy - 3, TILE * 0.18, 5, Math.PI * 0.1); ctx.fill();
-    } else if (type === GOLD) {
-      ctx.fillStyle = this.isNight ? '#6a5a00' : '#ffd700';
-      drawPolygon(ctx, sx, sy, TILE * 0.3, 8, Math.PI / 8); ctx.fill();
-      ctx.fillStyle = this.isNight ? '#8a7a00' : '#ffee44';
-      drawDiamond(ctx, sx, sy, TILE * 0.12, TILE * 0.08); ctx.fill();
-    }
-    if (hp < maxHp - 0.01) {
-      const ratio = Math.max(0, hp / maxHp);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(cx - TILE * 0.35, cy - TILE * 0.45, TILE * 0.7, 4);
-      let barColor = '#00ff44';
-      if (type === GOLD) barColor = '#ffcc00';
-      if (type === ROCK) barColor = '#cccccc';
-      ctx.fillStyle = barColor;
-      ctx.fillRect(cx - TILE * 0.35, cy - TILE * 0.45, TILE * 0.7 * ratio, 4);
-    }
-  }
-
-  drawBase(ctx) {
-    const bx = BASE_X * TILE, by = BASE_Y * TILE;
-    const r = this.baseRadius * TILE;
-    ctx.fillStyle = this.isNight ? '#1a2a0a' : '#2a4a18';
-    drawPolygon(ctx, bx, by, r, 8); ctx.fill();
-    ctx.fillStyle = this.isNight ? '#3a3a4a' : '#5a5a7a';
-    drawPolygon(ctx, bx, by, TILE * 0.7, 4, Math.PI / 4); ctx.fill();
-    ctx.fillStyle = this.isNight ? '#4a4a5a' : '#8a8aaa';
-    drawDiamond(ctx, bx, by, TILE * 0.4, TILE * 0.3); ctx.fill();
-    const hpRatio = this.baseHP / this.baseMaxHP;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(bx - TILE * 0.6, by - TILE * 0.9, TILE * 1.2, 5);
-    ctx.fillStyle = hpRatio > 0.5 ? '#00ff44' : hpRatio > 0.25 ? '#ffaa00' : '#ff3333';
-    ctx.fillRect(bx - TILE * 0.6, by - TILE * 0.9, TILE * 1.2 * hpRatio, 5);
-  }
-
-  drawWall(ctx, wall) {
-    drawWallTexture(ctx, wall.x, wall.y, TILE, this.isNight);
-    const hpR = wall.hp / wall.maxHp;
-    if (hpR < 1) {
-      ctx.fillStyle = '#333';
-      ctx.fillRect(wall.x - TILE * 0.3, wall.y - TILE * 0.5, TILE * 0.6, 3);
-      ctx.fillStyle = hpR > 0.5 ? '#0f0' : '#f80';
-      ctx.fillRect(wall.x - TILE * 0.3, wall.y - TILE * 0.5, TILE * 0.6 * hpR, 3);
-    }
-  }
-
-  drawTower(ctx, t) {
-    const cfg = t.cfg;
-    const night = this.isNight;
-    if (t === this.selectedUnit) {
-      ctx.strokeStyle = 'rgba(0,240,255,0.2)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(t.x, t.y, t.range * TILE, 0, Math.PI * 2); ctx.stroke();
-    }
-    // 塔基多边形
-    const outerColor = night ? cfg.colorNight : cfg.color;
-    ctx.fillStyle = outerColor;
-    drawPolygon(ctx, t.x, t.y, TILE * 0.38, cfg.sides); ctx.fill();
-    // 内层
-    const innerColor = night ? TOWER_TYPES.arrow.colorNight : cfg.color;
-    ctx.fillStyle = innerColor;
-    ctx.globalAlpha = 0.6;
-    drawPolygon(ctx, t.x, t.y, TILE * 0.22, cfg.sides); ctx.fill();
-    ctx.globalAlpha = 1;
-    // 等级标记
-    ctx.fillStyle = '#ffffff';
-    drawDiamond(ctx, t.x, t.y, TILE * 0.08, TILE * 0.12); ctx.fill();
-    // 升级星星
-    if (t.level > 1) {
-      ctx.fillStyle = '#ffd700';
-      for (let i = 0; i < t.level - 1; i++) {
-        ctx.beginPath();
-        ctx.arc(t.x + (i - 0.5) * 5 + 2, t.y - TILE * 0.45, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-  }
-
-  drawWorker(ctx, w) {
-    ctx.fillStyle = this.isNight ? '#225588' : '#44aaff';
-    drawDiamond(ctx, w.x, w.y, TILE * 0.22, TILE * 0.32); ctx.fill();
-    ctx.fillStyle = this.isNight ? '#6699cc' : '#aaddff';
-    drawDiamond(ctx, w.x, w.y, TILE * 0.12, TILE * 0.18); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(w.x, w.y, 2, 0, Math.PI * 2); ctx.fill();
-  }
-
-  drawWorkerLaser(ctx, w, res) {
-    const t = performance.now() / 100;
-    const flicker = 0.7 + Math.sin(t) * 0.3;
-    ctx.strokeStyle = `rgba(100,200,255,${0.25 * flicker})`; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(res.x, res.y); ctx.stroke();
-    ctx.strokeStyle = `rgba(180,230,255,${0.6 * flicker})`; ctx.lineWidth = 4; ctx.stroke();
-    ctx.strokeStyle = `rgba(255,255,255,${flicker})`; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = `rgba(180,230,255,${flicker})`;
-    ctx.beginPath(); ctx.arc(res.x, res.y, TILE * 0.1 + Math.sin(t * 2) * 3, 0, Math.PI * 2); ctx.fill();
-  }
-
-  drawEnemy(ctx, e) {
-    if (!e.enemyType) return;
-    const cfg = e.enemyType;
-    e.rot += (e.rotSpeed || 0) * 0.016;
-    const size = TILE * 0.3 + (cfg.tier || 1) * 2;
-    const color = cfg.color;
-
-    ctx.fillStyle = color;
-    if (cfg.isStar) {
-      drawStar(ctx, e.x, e.y, size, size * 0.5, 5, e.rot);
-    } else if (cfg.sides === 0) {
-      // sphere → 圆
-      ctx.beginPath(); ctx.arc(e.x, e.y, size, 0, Math.PI * 2);
-    } else {
-      drawPolygon(ctx, e.x, e.y, size, cfg.sides, e.rot);
-    }
-    ctx.fill();
-
-    // 内层
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    if (cfg.isStar) {
-      drawStar(ctx, e.x, e.y, size * 0.55, size * 0.25, 5, e.rot);
-    } else if (cfg.sides === 0) {
-      ctx.beginPath(); ctx.arc(e.x, e.y, size * 0.55, 0, Math.PI * 2);
-    } else {
-      drawPolygon(ctx, e.x, e.y, size * 0.55, cfg.sides, e.rot);
-    }
-    ctx.fill();
-
-    // 减速效果
-    if (e.slowTimer > 0) {
-      ctx.fillStyle = `rgba(100,200,255,${e.slowTimer * 0.3})`;
-      ctx.beginPath(); ctx.arc(e.x, e.y, size + 4, 0, Math.PI * 2); ctx.fill();
-    }
-
-    // 血条
-    const hpR = e.hp / e.maxHp;
-    if (hpR < 1) {
-      ctx.fillStyle = '#333';
-      ctx.fillRect(e.x - TILE * 0.25, e.y - size - 6, TILE * 0.5, 3);
-      ctx.fillStyle = '#ff3333';
-      ctx.fillRect(e.x - TILE * 0.25, e.y - size - 6, TILE * 0.5 * hpR, 3);
-    }
-  }
-
-  drawMinimap(ctx, w, h) {
-    const mmSize = 100;
-    const mmX = w - mmSize - 8, mmY = h - mmSize - 55;
-    const scale = mmSize / (WORLD_W * TILE);
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(mmX - 2, mmY - 2, mmSize + 4, mmSize + 4);
-    ctx.fillStyle = '#0a0a14';
-    ctx.fillRect(mmX, mmY, mmSize, mmSize);
-    // 已探索区域
-    ctx.fillStyle = '#1a2a14';
-    for (const [k, v] of this.fogMap) {
-      if (v >= FOG_EXPLORED) {
-        const [tx, ty] = k.split(',').map(Number);
-        ctx.fillRect(mmX + tx * TILE * scale, mmY + ty * TILE * scale, TILE * scale, TILE * scale);
-      }
-    }
-    // 基地
-    ctx.fillStyle = '#00ff44';
-    ctx.fillRect(mmX + BASE_X * TILE * scale - 2, mmY + BASE_Y * TILE * scale - 2, 4, 4);
-    // 单位
-    ctx.fillStyle = '#00aadd';
-    for (const t of this.towers) ctx.fillRect(mmX + t.x * scale - 1, mmY + t.y * scale - 1, 2, 2);
-    ctx.fillStyle = '#44aaff';
-    for (const w2 of this.workers) ctx.fillRect(mmX + w2.x * scale - 1, mmY + w2.y * scale - 1, 2, 2);
-    ctx.fillStyle = '#ff4444';
-    for (const e of this.enemies) ctx.fillRect(mmX + e.x * scale - 1, mmY + e.y * scale - 1, 2, 2);
-    // 视口
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
-    ctx.strokeRect(
-      mmX + (this.camX - w / 2 / this.zoom) * scale,
-      mmY + (this.camY - h / 2 / this.zoom) * scale,
-      w / this.zoom * scale, h / this.zoom * scale
-    );
-  }
-
-  // ===== 输入处理 =====
-  screenToWorld(sx, sy) {
-    const w = this.canvas.width, h = this.canvas.height;
-    return { x: (sx - w / 2) / this.zoom + this.camX, y: (sy - h / 2) / this.zoom + this.camY };
-  }
-
-  worldToCell(wx, wy) {
-    return { x: Math.floor(wx / TILE), y: Math.floor(wy / TILE) };
-  }
-
-  findUnitAt(wx, wy) {
-    const all = [...this.towers, ...this.workers, ...this.walls];
-    for (const u of all) {
-      if (Math.sqrt((u.x - wx) ** 2 + (u.y - wy) ** 2) < TILE * 0.5) return u;
-    }
-    return null;
-  }
-
-  findResourceAt(wx, wy) {
-    const cell = this.worldToCell(wx, wy);
-    const key = `${cell.x},${cell.y}`;
-    const cached = this.resourceCache.get(key);
-    if (cached && cached.hp > 0) {
-      return { key, x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2, type: cached.type, fromCache: true };
-    }
-    if (cached) return null;
-    const terrain = getTerrain(cell.x, cell.y);
-    if (terrain === TREE || terrain === ROCK || terrain === GOLD) {
-      return { key, x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2, type: terrain, fromCache: false };
-    }
-    return null;
-  }
-
-  handleMouseDown(sx, sy) {
-    const world = this.screenToWorld(sx, sy);
-    const unit = this.findUnitAt(world.x, world.y);
-
-    // 升级模式：点击塔升级
-    if (this.buildMode === 'upgrade') {
-      if (unit && this.towers.includes(unit)) {
-        this.upgradeTower(unit);
-        return;
-      }
-      if (unit && this.walls.includes(unit)) {
-        this.upgradeWall(unit);
-        return;
-      }
-      return;
-    }
-
-    if (unit && (this.towers.includes(unit) || this.workers.includes(unit))) {
-      this.dragUnit = unit;
-      this.dragUnitLine = null;
-      this.selectedUnit = unit;
-      this.buildMode = null;
-      if (this.onBuildModeChange) this.onBuildModeChange(null);
-      return;
-    }
-
-    if (this.buildMode && TOWER_TYPES[this.buildMode]) {
-      const cell = this.worldToCell(world.x, world.y);
-      this.doBuildTower(cell.x, cell.y);
-      return;
-    }
-    if (this.buildMode === 'wall') {
-      const cell = this.worldToCell(world.x, world.y);
-      this.doBuildWall(cell.x, cell.y);
-      return;
-    }
-    if (this.buildMode === 'worker') {
-      const cell = this.worldToCell(world.x, world.y);
-      this.doBuildWorker(cell.x, cell.y);
-      return;
-    }
-
-    this.dragging = true;
-    this.dragStartX = sx; this.dragStartY = sy;
-    this.dragCamX = this.camX; this.dragCamY = this.camY;
-    this.dragUnit = null; this.dragUnitLine = null;
-    this.selectedUnit = null;
-  }
-
-  handleMouseMove(sx, sy) {
-    const world = this.screenToWorld(sx, sy);
-    if (this.dragUnit) {
-      const resource = this.findResourceAt(world.x, world.y);
-      this.dragUnitLine = resource ? { x: resource.x, y: resource.y } : { x: world.x, y: world.y };
-      return;
-    }
-    if (this.dragging) {
-      this.camX = this.dragCamX - (sx - this.dragStartX) / this.zoom;
-      this.camY = this.dragCamY - (sy - this.dragStartY) / this.zoom;
-      return;
-    }
-    if (this.buildMode) {
-      this.hoverCell = this.worldToCell(world.x, world.y);
-    }
-  }
-
-  handleMouseUp(sx, sy) {
-    if (this.dragUnit) {
-      const world = this.screenToWorld(sx, sy);
-      const resource = this.findResourceAt(world.x, world.y);
-      if (resource) {
-        const unit = this.dragUnit;
-        if (this.workers.includes(unit)) {
-          unit.targetX = resource.x;
-          unit.targetY = resource.y;
-          if (!resource.fromCache) {
-            const info = RES_INFO[resource.type];
-            this.resourceCache.set(resource.key, {
-              key: resource.key, type: resource.type,
-              x: resource.x, y: resource.y,
-              hp: info.hp, maxHp: info.hp, shakeT: 0
-            });
-          }
-          unit.targetResource = this.resourceCache.get(resource.key);
-        }
-      }
-      this.dragUnit = null;
-      this.dragUnitLine = null;
-      return;
-    }
-    this.dragging = false;
-  }
-
-  handleWheel(delta) {
-    this.targetZoom = Math.max(0.4, Math.min(2.5, this.targetZoom - delta * 0.001));
-  }
-
-  // ===== 建造 =====
-  doBuildTower(cx, cy) {
-    const terrain = getTerrain(cx, cy);
-    if (terrain !== GRASS) return;
-    const cfg = TOWER_TYPES[this.buildMode];
+    const cfg = ENEMY_CONFIGS[typeKey];
     if (!cfg) return;
-    if (this.wood < cfg.costWood || this.stone < cfg.costStone) return;
-    this.wood -= cfg.costWood;
-    this.stone -= cfg.costStone;
-    this.towers.push({
-      x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2,
-      type: cfg.type, cfg, level: 1,
-      damage: cfg.upgradeDamage[0], range: cfg.upgradeRange[0],
-      fireRate: cfg.fireRate, fireTimer: 0,
-      beamT: 0, beamTarget: null, alive: true
+
+    // 从地图边缘随机生成
+    const side = Math.floor(Math.random() * 4);
+    const mapHalf = (GRID_SIZE * CELL_SIZE) / 2 - 1;
+    let sx, sz;
+    if (side === 0) { sx = -mapHalf + Math.random() * mapHalf * 2; sz = -mapHalf; }
+    else if (side === 1) { sx = mapHalf; sz = -mapHalf + Math.random() * mapHalf * 2; }
+    else if (side === 2) { sx = -mapHalf + Math.random() * mapHalf * 2; sz = mapHalf; }
+    else { sx = -mapHalf; sz = -mapHalf + Math.random() * mapHalf * 2; }
+
+    const group = new THREE.Group();
+    let geo;
+    if (cfg.geometry === 'box') geo = new THREE.BoxGeometry(cfg.size * 0.9, cfg.size * 0.9, cfg.size * 0.9);
+    else if (cfg.geometry === 'tetrahedron') geo = new THREE.TetrahedronGeometry(cfg.size * 0.7);
+    else if (cfg.geometry === 'cylinder') geo = new THREE.CylinderGeometry(cfg.size * 0.5, cfg.size * 0.5, cfg.size, 8);
+    else if (cfg.geometry === 'sphere') geo = new THREE.SphereGeometry(cfg.size * 0.5, 16, 16);
+    else geo = new THREE.IcosahedronGeometry(cfg.size * 0.6);
+    const mat = new THREE.MeshStandardMaterial({
+      color: cfg.color, emissive: cfg.color, emissiveIntensity: 0.6,
+      roughness: 0.3, metalness: 0.5
     });
-    this.updateHUD();
-  }
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.y = cfg.size * 0.5 + 0.2;
+    mesh.castShadow = true;
+    group.add(mesh);
 
-  doBuildWall(cx, cy) {
-    if (getTerrain(cx, cy) !== GRASS) return;
-    if (this.wood < 10) return;
-    this.wood -= 10;
-    this.walls.push({
-      x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2,
-      hp: 50, maxHp: 50, alive: true
+    // 血条（简化）
+    const bgGeo = new THREE.PlaneGeometry(1.2, 0.12);
+    const bg = new THREE.Mesh(bgGeo, new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide }));
+    bg.position.y = cfg.size + 1.0;
+    group.add(bg);
+    const fgGeo = new THREE.PlaneGeometry(1.2, 0.12);
+    const fg = new THREE.Mesh(fgGeo, new THREE.MeshBasicMaterial({ color: 0x00ff88, side: THREE.DoubleSide }));
+    fg.position.y = cfg.size + 1.0;
+    fg.position.z = 0.01;
+    group.add(fg);
+
+    group.position.set(sx, 0, sz);
+    this.scene.add(group);
+
+    // 难度缩放
+    const hpScale = 1 + this.dayNum * 0.15;
+    const hp = cfg.hp * hpScale;
+    this.enemies.push({
+      group, mesh, healthBar: bg, healthFill: fg,
+      hp, maxHp: hp, speed: cfg.speed, damage: cfg.reward / 10 + this.dayNum,
+      reward: cfg.reward, alive: true
     });
-    this.updateHUD();
   }
 
-  doBuildWorker(cx, cy) {
-    if (getTerrain(cx, cy) !== GRASS) return;
-    if (this.wood < 20) return;
-    this.wood -= 20;
-    this.workers.push({
-      x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2,
-      targetX: cx * TILE + TILE / 2, targetY: cy * TILE + TILE / 2,
-      targetResource: null, alive: true
+  updateTowers(dt) {
+    for (const tower of this.towers) {
+      tower.fireTimer -= dt;
+      // 寻找目标
+      let target = null;
+      let closestDist = tower.range + 1;
+      for (const e of this.enemies) {
+        const dx = e.group.position.x - tower.group.position.x;
+        const dz = e.group.position.z - tower.group.position.z;
+        const d = Math.sqrt(dx * dx + dy_helper(dx, dz));
+        if (d < closestDist) { closestDist = d; target = e; }
+      }
+      if (target && tower.fireTimer <= 0) {
+        tower.fireTimer = 1 / tower.fireRate;
+        // 发射激光束
+        const beamColor = tower.config.color;
+        this.createTemporaryLaser(
+          tower.group.position.x, tower.group.position.y + 1, tower.group.position.z,
+          target.group.position.x, target.group.position.y + 0.5, target.group.position.z,
+          beamColor,
+          0.15
+        );
+        target.hp -= tower.damage;
+        // 冰塔减速
+        if (tower.type === 'ice') {
+          target.speed = Math.max(0.3, target.speed * 0.85);
+        }
+        // 塔身抖动
+        tower.top.scale.set(1.15, 1.15, 1.15);
+        setTimeout(() => {
+          const s = 1 + (tower.level - 1) * 0.15;
+          tower.top.scale.set(s, s, s);
+        }, 80);
+
+        if (target.hp <= 0) {
+          target.alive = false;
+          this.kills++;
+          this.coins += target.reward;
+          this.updateHUD();
+        }
+      }
+    }
+  }
+
+  // ========== 激光束 ==========
+  createTemporaryLaser(x1, y1, z1, x2, y2, z2, color, duration) {
+    const from = new THREE.Vector3(x1, y1, z1);
+    const to = new THREE.Vector3(x2, y2, z2);
+    const dir = to.clone().sub(from);
+    const length = dir.length();
+    const geo = new THREE.CylinderGeometry(0.05, 0.05, length, 8);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
+    const beam = new THREE.Mesh(geo, mat);
+
+    // 定位
+    beam.position.copy(from.clone().add(to).multiplyScalar(0.5));
+    beam.lookAt(to);
+    beam.rotateX(Math.PI / 2);
+    this.scene.add(beam);
+    this.lasers.push({ mesh: beam, ttl: duration, mat });
+  }
+
+  createLaserBeam(fromPos, toPos, color) {
+    const from = fromPos.clone();
+    const to = toPos.clone();
+    from.y += 0.5;
+    const dir = to.clone().sub(from);
+    const length = dir.length() + 0.01;
+    const geo = new THREE.CylinderGeometry(0.04, 0.04, length, 6);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 });
+    const beam = new THREE.Mesh(geo, mat);
+    beam.position.copy(from.clone().add(to).multiplyScalar(0.5));
+    beam.lookAt(to);
+    beam.rotateX(Math.PI / 2);
+    this.scene.add(beam);
+    return beam;
+  }
+
+  removeLaserBeam(beam) {
+    this.scene.remove(beam);
+    beam.geometry.dispose();
+    beam.material.dispose();
+  }
+
+  updateLasers(dt) {
+    for (const l of this.lasers) {
+      l.ttl -= dt;
+      l.material.opacity = Math.max(0, l.ttl / 0.15) * 0.9;
+      if (l.ttl <= 0) {
+        this.scene.remove(l.mesh);
+        l.mesh.geometry.dispose();
+        l.mesh.material.dispose();
+      }
+    }
+    this.lasers = this.lasers.filter(l => l.ttl > 0);
+  }
+
+  // ========== 相机 ==========
+  updateCamera() {
+    const x = this.camTarget.x + Math.cos(this.camAngle) * this.camDist;
+    const z = this.camTarget.z + Math.sin(this.camAngle) * this.camDist;
+    this.camera.position.set(x, this.camHeight, z);
+    this.camera.lookAt(this.camTarget);
+  }
+
+  // ========== 输入 ==========
+  setupInput() {
+    const dom = this.renderer.domElement;
+
+    dom.addEventListener('mousedown', (e) => this.onMouseDown(e));
+    dom.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    dom.addEventListener('mouseup', (e) => this.onMouseUp(e));
+    dom.addEventListener('wheel', (e) => { e.preventDefault(); this.onWheel(e); }, { passive: false });
+    dom.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // 触摸支持
+    dom.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        this.onMouseDown({ clientX: t.clientX, clientY: t.clientY, button: 0 });
+      }
     });
-    this.updateHUD();
+    dom.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        this.onMouseMove({ clientX: t.clientX, clientY: t.clientY, button: 0 });
+      }
+    });
+    dom.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      this.onMouseUp({ clientX: 0, clientY: 0, button: 0 });
+    });
   }
 
-  // ===== 升级 =====
-  upgradeTower(tower) {
-    if (tower.level >= 3) return;
-    const cost = tower.cfg.upgradeCosts[tower.level];
-    if (this.coins < cost) return;
-    this.coins -= cost;
-    tower.level++;
-    tower.damage = tower.cfg.upgradeDamage[tower.level - 1];
-    tower.range = tower.cfg.upgradeRange[tower.level - 1];
-    this.selectedUnit = tower;
-    this.updateHUD();
+  onMouseDown(e) {
+    this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    this.downAt = performance.now();
+    this.downX = e.clientX;
+    this.downY = e.clientY;
+
+    // 右键或中键 -> 旋转/平移
+    if (e.button === 2) {
+      this.isPanning = true;
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+      return;
+    }
+
+    // 若处于建造模式，检查点击的格子标记
+    if (this.buildMode && ['arrow','cannon','ice','lightning','wall','worker'].includes(this.buildMode)) {
+      const intersects = this.raycaster.intersectObjects(this.markers, false);
+      if (intersects.length > 0) {
+        const m = intersects[0].object;
+        const ud = m.userData;
+        let ok = false;
+        if (this.buildMode === 'wall') ok = this.buildWall(ud.worldX, ud.worldZ);
+        else if (this.buildMode === 'worker') ok = this.buildWorker(ud.worldX, ud.worldZ);
+        else ok = this.buildTower(this.buildMode, ud.worldX, ud.worldZ);
+        this.updateHUD();
+        return;
+      }
+    }
+
+    // 升级模式：点击塔或墙升级
+    if (this.buildMode === 'upgrade') {
+      const towerObjects = this.towers.map(t => t.group);
+      const towerHit = this.raycaster.intersectObjects(towerObjects, true);
+      if (towerHit.length > 0) {
+        const group = findAncestorGroup(towerHit[0].object, towerObjects);
+        const tower = this.towers.find(t => t.group === group);
+        if (tower) this.upgradeTower(tower);
+        this.updateHUD();
+        return;
+      }
+      const wallHit = this.raycaster.intersectObjects(this.walls.map(w => w.mesh), false);
+      if (wallHit.length > 0) {
+        const mesh = wallHit[0].object;
+        const wall = this.walls.find(w => w.mesh === mesh);
+        if (wall) this.upgradeWall(wall);
+        this.updateHUD();
+        return;
+      }
+    }
+
+    // 点击工人（如果有的话）进入拖拽采集模式
+    const workerObjects = this.workers.map(w => w.group);
+    const workerHit = this.raycaster.intersectObjects(workerObjects, true);
+    if (workerHit.length > 0) {
+      const group = findAncestorGroup(workerHit[0].object, workerObjects);
+      const worker = this.workers.find(w => w.group === group);
+      if (worker) {
+        this.selectedWorker = worker;
+        return;
+      }
+    }
+
+    // 否则开始右键/拖拽（已选中工人）
+    if (this.selectedWorker) {
+      // 检查是否点击到资源
+      const resObjects = this.resources.map(r => r.mesh);
+      const resHit = this.raycaster.intersectObjects(resObjects, true);
+      if (resHit.length > 0) {
+        const g = findAncestorGroup(resHit[0].object, resObjects);
+        const resource = this.resources.find(r => r.mesh === g);
+        if (resource) {
+          // 指派工人去采集
+          this.selectedWorker.target = { wx: resource.wx, wz: resource.wz, isResource: true, resource };
+          this.selectedWorker.state = 'moving';
+          this.selectedWorker = null;
+          return;
+        }
+      }
+      // 否则移动到空地
+      const groundHit = this.raycaster.intersectObjects(this.groundMeshes, false);
+      if (groundHit.length > 0) {
+        const pt = groundHit[0].point;
+        this.selectedWorker.target = { wx: pt.x, wz: pt.z };
+        this.selectedWorker.state = 'moving';
+        this.selectedWorker = null;
+      }
+    }
   }
 
-  upgradeWall(wall) {
-    if (wall.level >= 3) return;
-    const cost = 20 + (wall.level || 1) * 15;
-    if (this.coins < cost) return;
-    this.coins -= cost;
-    wall.level = (wall.level || 1) + 1;
-    wall.maxHp = 50 + (wall.level - 1) * 30;
-    wall.hp = wall.maxHp;
-    this.selectedUnit = wall;
-    this.updateHUD();
+  onMouseMove(e) {
+    if (this.isPanning) {
+      const dx = e.clientX - this.lastMouseX;
+      const dy = e.clientY - this.lastMouseY;
+      this.camAngle -= dx * 0.005;
+      this.camHeight = Math.max(8, Math.min(40, this.camHeight + dy * 0.08));
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+      this.updateCamera();
+    }
   }
 
-  // ===== 模式切换 =====
+  onMouseUp(e) {
+    this.isPanning = false;
+  }
+
+  onWheel(e) {
+    this.camDist = Math.max(10, Math.min(50, this.camDist + e.deltaY * 0.02));
+    this.updateCamera();
+  }
+
+  // ========== 外部接口 ==========
   setBuildMode(mode) {
-    this.buildMode = this.buildMode === mode ? null : mode;
-    this.selectedUnit = null;
-    this.dragUnit = null;
-    this.dragUnitLine = null;
-    if (this.onBuildModeChange) this.onBuildModeChange(this.buildMode);
+    this.buildMode = mode;
+    // 显示/隐藏建造标记
+    for (const m of this.markers) {
+      m.visible = (mode === 'arrow' || mode === 'cannon' || mode === 'ice' ||
+                    mode === 'lightning' || mode === 'wall' || mode === 'worker');
+    }
+    // 取消所有塔选中的范围圈显示
+    for (const t of this.towers) t.ring.visible = false;
+    this.selectedTower = null;
   }
 
   updateHUD() {
     if (this.onHUDUpdate) {
       this.onHUDUpdate({
-        wood: this.wood, stone: this.stone, coins: this.coins,
-        isNight: this.isNight, dayNum: this.dayNum,
-        hp: this.baseHP, maxHp: this.baseMaxHP
+        wood: Math.floor(this.wood),
+        stone: Math.floor(this.stone),
+        coins: Math.floor(this.coins),
+        isNight: this.isNight,
+        dayNum: this.dayNum,
+        hp: Math.floor(this.baseHp),
+        maxHp: this.baseMaxHp
       });
     }
-    if (this.onSelectedUnitUpdate && this.selectedUnit) {
-      this.onSelectedUnitUpdate(this.selectedUnit);
-    }
   }
+}
+
+// 辅助：找到上级 group
+function findAncestorGroup(obj, candidates) {
+  let cur = obj;
+  while (cur) {
+    if (candidates.includes(cur)) return cur;
+    cur = cur.parent;
+  }
+  return obj;
+}
+
+// 辅助：计算 2D 距离（防止上面代码因局部变量误用 dy 出错）
+function dy_helper(dx, dz) {
+  return dx * 0 + dz; // 仅为生成第二个参数用
+}
+
+// 平滑角度插值
+function smoothAngle(current, target, t) {
+  let diff = target - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * Math.min(1, t);
 }
