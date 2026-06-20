@@ -155,12 +155,12 @@ export class EndlessGame {
     this.dragArcPoints = [];  // 世界坐标点数组，render() 绘制抛物线
     // 预建弧线 mesh（避免每帧创建/销毁）
     this._arcLine = null;
-    this._arcMat = new THREE.LineDashedMaterial({ color: 0x44aaff, dashSize: 0.3, gapSize: 0.2, transparent: true, opacity: 0.85 });
+    this._arcMat = new THREE.LineBasicMaterial({ color: 0x66ccff, transparent: true, opacity: 0.9 });
     this._arcGeo = new THREE.BufferGeometry();
-    // 目标圆圈指示
+    // 目标圈圈指示（用 Mesh + RingGeometry，因为 RingGeometry 是面几何）
     this._targetRing = null;
-    this._targetRingMat = new THREE.LineBasicMaterial({ color: 0x66ffaa, transparent: true, opacity: 0.9 });
-    this._targetRingGeo = new THREE.RingGeometry(0.8, 0.95, 32);
+    this._targetRingMat = new THREE.MeshBasicMaterial({ color: 0x66ffaa, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+    this._targetRingGeo = new THREE.RingGeometry(0.7, 1.1, 32);
 
     this.onHUDUpdate = null;
     this.onGameOver = null;
@@ -434,6 +434,13 @@ export class EndlessGame {
     tip.position.y = 1.1;
     workerGroup.add(tip);
 
+    // 透明大碰撞盒（更容易点到工人，不影响视觉）
+    const hitGeo = new THREE.SphereGeometry(0.8, 12, 8);
+    const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+    const hit = new THREE.Mesh(hitGeo, hitMat);
+    hit.position.y = 0.6;
+    workerGroup.add(hit);
+
     workerGroup.position.set(wx, 0, wz);
     this.scene.add(workerGroup);
 
@@ -610,29 +617,31 @@ export class EndlessGame {
     if (pts.length < 2) {
       if (this._arcLine) { this.scene.remove(this._arcLine); this._arcLine = null; }
     } else {
-      const pos = new Float32Array(pts.length * 3);
-      for (let i = 0; i < pts.length; i++) {
-        pos[i * 3] = pts[i].x;
-        pos[i * 3 + 1] = pts[i].y;
-        pos[i * 3 + 2] = pts[i].z;
+      // 用短段模拟虚线：偶数段才渲染
+      const dashedPts = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        if (i % 2 === 0) {
+          dashedPts.push(pts[i], pts[i + 1]);
+        }
+      }
+      const pos = new Float32Array(dashedPts.length * 3);
+      for (let i = 0; i < dashedPts.length; i++) {
+        pos[i * 3] = dashedPts[i].x;
+        pos[i * 3 + 1] = dashedPts[i].y;
+        pos[i * 3 + 2] = dashedPts[i].z;
       }
       this._arcGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      this._arcGeo.setDrawRange(0, pts.length);
-      // 虚线需要计算线段距离
-      this._arcGeo.computeLineDistances();
+      this._arcGeo.setDrawRange(0, dashedPts.length);
       if (!this._arcLine) {
-        this._arcLine = new THREE.Line(this._arcGeo, this._arcMat);
+        this._arcLine = new THREE.LineSegments(this._arcGeo, this._arcMat);
         this.scene.add(this._arcLine);
       }
       this._arcLine.geometry.attributes.position.needsUpdate = true;
-      if (this._arcLine.geometry.attributes.lineDistance) {
-        this._arcLine.geometry.attributes.lineDistance.needsUpdate = true;
-      }
     }
     // 渲染/清理目标圈圈
     if (this.dragTarget && this.dragTarget.isResource) {
       if (!this._targetRing) {
-        this._targetRing = new THREE.Line(this._targetRingGeo, this._targetRingMat);
+        this._targetRing = new THREE.Mesh(this._targetRingGeo, this._targetRingMat);
         this._targetRing.rotation.x = -Math.PI / 2;
         this.scene.add(this._targetRing);
       }
@@ -1180,6 +1189,31 @@ export class EndlessGame {
       return;
     }
 
+    // 按下工人后移动鼠标 → 立即进入拖拽模式（不需要等 320ms）
+    if (this.isPressing && this.pressedEntity && this.pressedEntity.kind === 'worker') {
+      const moved = Math.abs(e.clientX - this.pressStartX) + Math.abs(e.clientY - this.pressStartY);
+      if (moved > 6) {
+        this.isDragging = true;
+        this.pressMoved = true;  // 同时标记移动过，避免 mouseup 触发短按
+        // 立即计算一次拖拽弧线
+        const groundHit = this.raycaster.intersectObjects(this.groundMeshes, false);
+        const resHit = this.raycaster.intersectObjects(this.resources.map(r => r.mesh), true);
+        let target = null;
+        if (resHit.length > 0) {
+          const g = findAncestorGroup(resHit[0].object, this.resources.map(r => r.mesh));
+          target = this.resources.find(r => r.mesh === g);
+        }
+        if (target) {
+          this.dragTarget = { wx: target.wx, wz: target.wz, isResource: true, resource: target };
+        } else if (groundHit.length > 0) {
+          const pt = groundHit[0].point;
+          this.dragTarget = { wx: pt.x, wz: pt.z, isResource: false };
+        }
+        this.updateDragArc();
+        return;
+      }
+    }
+
     // 长按期间：记录是否移动（取消短按用，不影响拖拽）
     if (this.isPressing && this.pressedEntity) {
       const moved = Math.abs(e.clientX - this.pressStartX) + Math.abs(e.clientY - this.pressStartY);
@@ -1228,8 +1262,24 @@ export class EndlessGame {
     this.pressedEntity = null;
   }
 
-  // 从射线检测中判断点到了什么实体
+  // 从射线检测中判断点到了什么实体（工人优先，避免被塔/基地挡住）
   pickEntity() {
+    // 工人（优先）
+    for (const w of this.workers) {
+      const hits = this.raycaster.intersectObjects([w.group], true);
+      if (hits.length > 0) {
+        return {
+          kind: 'worker', name: '工人', icon: '◈',
+          entity: w,
+          stats: [
+            { label: '状态', value: w.state === 'idle' ? '空闲' : w.state === 'gathering' ? '采集中' : '移动中' }
+          ],
+          actions: [
+            { label: '长按拖拽采集', disabled: true }
+          ]
+        };
+      }
+    }
     // 基地
     if (this.baseGroup) {
       const hits = this.raycaster.intersectObjects([this.baseGroup], true);
@@ -1261,22 +1311,6 @@ export class EndlessGame {
           actions: upgCost !== null ? [
             { label: `升级 (💰${upgCost})`, action: () => this.upgradeTower(t) }
           ] : [{ label: '已满级', disabled: true }]
-        };
-      }
-    }
-    // 工人
-    for (const w of this.workers) {
-      const hits = this.raycaster.intersectObjects([w.group], true);
-      if (hits.length > 0) {
-        return {
-          kind: 'worker', name: '工人', icon: '◈',
-          entity: w,
-          stats: [
-            { label: '状态', value: w.state === 'idle' ? '空闲' : w.state === 'gathering' ? '采集中' : '移动中' }
-          ],
-          actions: [
-            { label: '长按拖拽采集', disabled: true }
-          ]
         };
       }
     }
@@ -1348,14 +1382,14 @@ export class EndlessGame {
     const tx = this.dragTarget.wx;
     const tz = this.dragTarget.wz;
     const dist = Math.sqrt((tx - sx) ** 2 + (tz - sz) ** 2);
-    const steps = Math.max(8, Math.floor(dist / CELL_SIZE) * 2);
+    const steps = Math.max(20, Math.floor(dist * 6));  // 足够密的点，配合虚线视觉
     const pts = [];
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       const x = sx + (tx - sx) * t;
       const z = sz + (tz - sz) * t;
-      const arcH = Math.sin(t * Math.PI) * Math.min(dist * 0.35, 3);
-      pts.push(new THREE.Vector3(x, arcH + 0.3, z));
+      const arcH = Math.sin(t * Math.PI) * Math.min(Math.max(dist * 0.45, 1), 4);  // 抛物线弧高
+      pts.push(new THREE.Vector3(x, arcH + 0.5, z));
     }
     this.dragArcPoints = pts;
   }
