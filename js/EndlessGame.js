@@ -1007,14 +1007,17 @@ export class EndlessGame {
   updateLasers(dt) {
     for (const l of this.lasers) {
       l.ttl -= dt;
-      l.material.opacity = Math.max(0, l.ttl / 0.15) * 0.9;
+      l.mat.opacity = Math.max(0, l.ttl / 0.15) * 0.9;
+    }
+    this.lasers = this.lasers.filter(l => {
       if (l.ttl <= 0) {
         this.scene.remove(l.mesh);
         l.mesh.geometry.dispose();
         l.mesh.material.dispose();
+        return false;
       }
-    }
-    this.lasers = this.lasers.filter(l => l.ttl > 0);
+      return true;
+    });
   }
 
   // ========== 相机 ==========
@@ -1123,6 +1126,11 @@ export class EndlessGame {
   }
 
   onMouseMove(e) {
+    // 更新鼠标和射线（拖拽工人时也要用最新的鼠标位置）
+    this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
     // 右键平移
     if (this.isPanning) {
       const dx = e.clientX - this.lastMouseX;
