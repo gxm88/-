@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>几何体塔防 - Geometric Tower Defense</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>几何体塔防</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -13,59 +13,43 @@
 
   <!-- ==================== 主页 ==================== -->
   <div id="page-home">
-    <!-- 顶部导航 -->
-    <header class="home-header">
-      <h1 class="home-title">几何体塔防</h1>
-      <p class="home-subtitle">GEOMETRIC TOWER DEFENSE</p>
-    </header>
-
-    <main class="home-main">
-      <!-- 关卡选择 -->
-      <section class="section">
-        <h2 class="section-title">选择关卡</h2>
-        <p class="section-desc">完成关卡解锁下一关，获取更多星星评价</p>
-        <div id="level-grid" class="level-grid"></div>
-      </section>
-
-      <!-- 塔图鉴 -->
-      <section class="section">
-        <h2 class="section-title">防御塔图鉴</h2>
-        <p class="section-desc">四种防御塔，各有特色，可以升级到 Lv.3</p>
-        <div id="tower-gallery" class="tower-gallery"></div>
-      </section>
-
-      <!-- 操作说明 -->
-      <section class="section">
-        <h2 class="section-title">操作说明</h2>
-        <div class="controls-grid">
-          <div class="control-item">
-            <span class="control-key">🖱 左键</span>
-            <span class="control-desc">放置塔 / 点击已有塔升级</span>
-          </div>
-          <div class="control-item">
-            <span class="control-key">🖱 右键</span>
-            <span class="control-desc">取消选择 / 关闭面板</span>
-          </div>
-          <div class="control-item">
-            <span class="control-key">🖱 滚轮</span>
-            <span class="control-desc">缩放视角</span>
-          </div>
-          <div class="control-item">
-            <span class="control-key">🖱 右键拖拽</span>
-            <span class="control-desc">旋转视角</span>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="home-footer">
-      <p>Retro-Futuristic Arcade Style &copy; 2026</p>
-    </footer>
+    <div class="home-topbar">
+      <span class="home-title-sm">几何体塔防</span>
+      <span class="home-coins">💰 <span id="home-coins">0</span></span>
+    </div>
+    <div class="home-actions">
+      <button class="home-btn" id="btn-levels">
+        <span class="home-btn-icon">📋</span>
+        <span class="home-btn-label">关卡选择</span>
+      </button>
+      <button class="home-btn" id="btn-upgrade">
+        <span class="home-btn-icon">⚡</span>
+        <span class="home-btn-label">升级塔</span>
+      </button>
+    </div>
   </div>
 
-  <!-- ==================== 游戏页面 ==================== -->
+  <!-- ==================== 关卡选择页 ==================== -->
+  <div id="page-levels" class="hidden">
+    <div class="subpage-header">
+      <button class="back-btn" id="btn-levels-back">← 返回</button>
+      <span class="subpage-title">选择关卡</span>
+    </div>
+    <div id="level-grid" class="level-grid-h"></div>
+  </div>
+
+  <!-- ==================== 塔升级页 ==================== -->
+  <div id="page-upgrade" class="hidden">
+    <div class="subpage-header">
+      <button class="back-btn" id="btn-upgrade-back">← 返回</button>
+      <span class="subpage-title">升级防御塔</span>
+      <span class="subpage-coins">💰 <span id="upgrade-coins">0</span></span>
+    </div>
+    <div id="upgrade-list" class="upgrade-list"></div>
+  </div>
+
+  <!-- ==================== 游戏页 ==================== -->
   <div id="page-game" class="hidden">
-    <!-- 3D 画布 -->
     <div id="game-container"></div>
 
     <!-- 顶部 HUD -->
@@ -100,7 +84,7 @@
     <div id="tower-panel" class="hidden"></div>
 
     <!-- 开始波次按钮 -->
-    <button id="btn-start-wave" class="wave-btn hidden">开始下一波</button>
+    <button id="btn-start-wave" class="wave-btn hidden">下一波</button>
 
     <!-- 升级面板 -->
     <div id="upgrade-panel" class="upgrade-panel hidden">
@@ -115,7 +99,7 @@
       </div>
     </div>
 
-    <!-- 游戏结束/胜利覆盖层 -->
+    <!-- 游戏结束覆盖层 -->
     <div id="game-overlay" class="game-overlay hidden">
       <div class="overlay-content">
         <h1 id="overlay-title" class="overlay-title">胜利！</h1>
@@ -125,9 +109,9 @@
             <span class="ostat-label">得分</span>
             <span class="ostat-value" id="overlay-score">0</span>
           </div>
-          <div class="ostat" id="overlay-wave-container">
-            <span class="ostat-label">波次</span>
-            <span class="ostat-value" id="overlay-wave">0</span>
+          <div class="ostat">
+            <span class="ostat-label">获得金币</span>
+            <span class="ostat-value gold" id="overlay-coins">0</span>
           </div>
         </div>
         <div id="overlay-stars" class="overlay-stars"></div>

@@ -62,20 +62,28 @@ export const TOWER_CONFIGS = {
 
 export const TOWER_LIST = ['arrow', 'cannon', 'ice', 'lightning'];
 
+// 全局升级费用（在主页面升级塔用）
+export const GLOBAL_UPGRADE_COSTS = {
+  arrow:   [0, 80, 160],
+  cannon:  [0, 120, 240],
+  ice:     [0, 100, 200],
+  lightning: [0, 160, 320]
+};
+
 export class Tower {
-  constructor(config, gridPos, worldPos, scene) {
+  constructor(config, gridPos, worldPos, scene, globalLevel = 1) {
     this.config = config;
     this.gridPos = gridPos;
     this.worldPos = worldPos;
     this.scene = scene;
     this.fireTimer = 0;
     this.target = null;
-    this.level = 1;
+    this.level = globalLevel;
     this.maxLevel = 3;
 
-    // 当前属性
-    this.damage = config.upgradeDamage[0];
-    this.range = config.upgradeRange[0];
+    // 当前属性（使用全局等级）
+    this.damage = config.upgradeDamage[this.level - 1];
+    this.range = config.upgradeRange[this.level - 1];
     this.fireRate = config.fireRate;
 
     this.mesh = this.createMesh();

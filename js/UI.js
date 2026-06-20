@@ -1,22 +1,25 @@
-import { TOWER_CONFIGS, TOWER_LIST } from './Tower.js';
+import { TOWER_CONFIGS, TOWER_LIST, GLOBAL_UPGRADE_COSTS } from './Tower.js';
 import { LEVELS, getStars } from './LevelData.js';
 
 export class UIManager {
   constructor() {
     this.selectedTowerType = null;
-    this.unlockedLevels = 1; // 初始解锁第1关
-    this.levelStars = {};    // { levelId: stars }
     this.setupElements();
     this.setupTowerPanel();
     this.setupButtons();
     this.setupUpgradePanel();
-    this.renderHomePage();
   }
 
   setupElements() {
     // 页面
     this.pageHome = document.getElementById('page-home');
+    this.pageLevels = document.getElementById('page-levels');
+    this.pageUpgrade = document.getElementById('page-upgrade');
     this.pageGame = document.getElementById('page-game');
+
+    // 主页金币
+    this.homeCoins = document.getElementById('home-coins');
+    this.upgradeCoins = document.getElementById('upgrade-coins');
 
     // HUD
     this.hudLives = document.getElementById('hud-lives');
@@ -33,8 +36,8 @@ export class UIManager {
     this.overlayTitle = document.getElementById('overlay-title');
     this.overlaySubtitle = document.getElementById('overlay-subtitle');
     this.overlayScore = document.getElementById('overlay-score');
+    this.overlayCoins = document.getElementById('overlay-coins');
     this.overlayStars = document.getElementById('overlay-stars');
-    this.overlayWave = document.getElementById('overlay-wave');
     this.overlayBtn = document.getElementById('overlay-btn');
     this.overlayNextBtn = document.getElementById('overlay-next-btn');
 
@@ -47,10 +50,16 @@ export class UIManager {
     this.btnUpgrade = document.getElementById('btn-upgrade');
     this.btnSell = document.getElementById('btn-sell');
 
-    // 主页
-    this.levelGrid = document.getElementById('level-grid');
-    this.towerGallery = document.getElementById('tower-gallery');
+    // 主页按钮
+    this.btnLevels = document.getElementById('btn-levels');
+    this.btnUpgradePage = document.getElementById('btn-upgrade');
+    this.btnLevelsBack = document.getElementById('btn-levels-back');
+    this.btnUpgradeBack = document.getElementById('btn-upgrade-back');
     this.btnBackToHome = document.getElementById('btn-back-home');
+
+    // 关卡网格
+    this.levelGrid = document.getElementById('level-grid');
+    this.upgradeList = document.getElementById('upgrade-list');
   }
 
   setupTowerPanel() {
@@ -95,6 +104,23 @@ export class UIManager {
     this.btnBackToHome.addEventListener('click', () => {
       if (this.onBackToHome) this.onBackToHome();
     });
+
+    // 主页导航按钮
+    this.btnLevels.addEventListener('click', () => {
+      if (this.onNavigateToLevels) this.onNavigateToLevels();
+    });
+
+    this.btnUpgradePage.addEventListener('click', () => {
+      if (this.onNavigateToUpgrade) this.onNavigateToUpgrade();
+    });
+
+    this.btnLevelsBack.addEventListener('click', () => {
+      if (this.onNavigateToHome) this.onNavigateToHome();
+    });
+
+    this.btnUpgradeBack.addEventListener('click', () => {
+      if (this.onNavigateToHome) this.onNavigateToHome();
+    });
   }
 
   setupUpgradePanel() {
@@ -106,19 +132,51 @@ export class UIManager {
     });
   }
 
-  // ===== 主页渲染 =====
-  renderHomePage() {
-    this.renderLevelGrid();
-    this.renderTowerGallery();
+  // ===== 页面切换 =====
+  showHomePage() {
+    this.pageHome.classList.remove('hidden');
+    this.pageLevels.classList.add('hidden');
+    this.pageUpgrade.classList.add('hidden');
+    this.pageGame.classList.add('hidden');
   }
 
-  renderLevelGrid() {
+  showLevelsPage() {
+    this.pageHome.classList.add('hidden');
+    this.pageLevels.classList.remove('hidden');
+    this.pageUpgrade.classList.add('hidden');
+    this.pageGame.classList.add('hidden');
+  }
+
+  showUpgradePage() {
+    this.pageHome.classList.add('hidden');
+    this.pageLevels.classList.add('hidden');
+    this.pageUpgrade.classList.remove('hidden');
+    this.pageGame.classList.add('hidden');
+  }
+
+  showGamePage() {
+    this.pageHome.classList.add('hidden');
+    this.pageLevels.classList.add('hidden');
+    this.pageUpgrade.classList.add('hidden');
+    this.pageGame.classList.remove('hidden');
+    document.getElementById('hud').classList.remove('hidden');
+    this.towerPanel.classList.remove('hidden');
+  }
+
+  // ===== 主页金币 =====
+  updateHomeCoins(coins) {
+    this.homeCoins.textContent = coins;
+    this.upgradeCoins.textContent = coins;
+  }
+
+  // ===== 关卡选择页 =====
+  renderLevelGrid(unlockedLevels, levelStars) {
     this.levelGrid.innerHTML = '';
     LEVELS.forEach(level => {
       const card = document.createElement('div');
       card.className = 'level-card';
-      const unlocked = level.id <= this.unlockedLevels;
-      const stars = this.levelStars[level.id] || 0;
+      const unlocked = level.id <= unlockedLevels;
+      const stars = levelStars[level.id] || 0;
 
       if (!unlocked) {
         card.classList.add('locked');
@@ -133,7 +191,7 @@ export class UIManager {
         <div class="level-stars">
           ${[1,2,3].map(i => `<span class="star ${i <= stars ? 'filled' : ''}">★</span>`).join('')}
         </div>
-        <div class="level-info">${level.waves} 波 | ${level.cols}x${level.rows} 地图</div>
+        <div class="level-info">${level.waves}波 | ${level.cols}x${level.rows}</div>
         ${!unlocked ? '<div class="level-lock">🔒</div>' : ''}
       `;
 
@@ -147,44 +205,62 @@ export class UIManager {
     });
   }
 
-  renderTowerGallery() {
-    this.towerGallery.innerHTML = '';
+  // ===== 塔升级页 =====
+  renderUpgradeList(globalTowerLevels, globalCoins) {
+    this.upgradeList.innerHTML = '';
     TOWER_LIST.forEach(type => {
       const config = TOWER_CONFIGS[type];
+      const level = globalTowerLevels[type] || 1;
+      const isMaxed = level >= 3;
+      const cost = isMaxed ? 0 : GLOBAL_UPGRADE_COSTS[type][level];
+      const canAfford = globalCoins >= cost && !isMaxed;
+
       const card = document.createElement('div');
-      card.className = 'gallery-card';
+      card.className = 'upgrade-card';
+
+      const nextLevel = isMaxed ? null : level + 1;
+      let nextHtml = '';
+      if (nextLevel) {
+        nextHtml = `<div class="upgrade-card-next">→ Lv${nextLevel}: 伤害 ${config.upgradeDamage[nextLevel - 1]} / 范围 ${config.upgradeRange[nextLevel - 1].toFixed(1)}</div>`;
+      }
+
+      let btnClass = 'btn-global-upgrade';
+      let btnText = `升级 💰${cost}`;
+      if (isMaxed) {
+        btnClass += ' maxed';
+        btnText = '已满级';
+      } else if (!canAfford) {
+        btnClass += ' disabled';
+      }
+
       card.innerHTML = `
-        <div class="gallery-icon" style="background:#${config.color.toString(16).padStart(6, '0')}"></div>
-        <div class="gallery-name">${config.name}</div>
-        <div class="gallery-desc">${config.description}</div>
-        <div class="gallery-stats">
-          <div class="gstat"><span>伤害</span><span>${config.upgradeDamage.join(' / ')}</span></div>
-          <div class="gstat"><span>范围</span><span>${config.upgradeRange.join(' / ')}</span></div>
-          <div class="gstat"><span>攻速</span><span>${config.fireRate}/s</span></div>
-          <div class="gstat"><span>造价</span><span>💰${config.cost}</span></div>
-          <div class="gstat"><span>升级</span><span>💰${config.upgradeCosts[1]}/${config.upgradeCosts[2]}</span></div>
+        <div class="upgrade-card-icon" style="background:#${config.color.toString(16).padStart(6, '0')}"></div>
+        <div class="upgrade-card-name">${config.name}</div>
+        <div class="upgrade-card-level">Lv.${level}</div>
+        <div class="upgrade-card-stats">
+          <div class="upgrade-card-stat"><span>伤害</span><span>${config.upgradeDamage[level - 1]}</span></div>
+          <div class="upgrade-card-stat"><span>范围</span><span>${config.upgradeRange[level - 1].toFixed(1)}</span></div>
+          <div class="upgrade-card-stat"><span>攻速</span><span>${config.fireRate}/s</span></div>
         </div>
+        ${nextHtml}
+        <button class="${btnClass}" data-tower="${type}" ${(!canAfford || isMaxed) ? '' : ''}>
+          ${btnText}
+        </button>
       `;
-      this.towerGallery.appendChild(card);
+
+      const btn = card.querySelector('.btn-global-upgrade');
+      if (canAfford && !isMaxed) {
+        btn.addEventListener('click', () => {
+          if (this.onGlobalUpgrade) this.onGlobalUpgrade(type);
+        });
+      }
+
+      this.upgradeList.appendChild(card);
     });
-  }
-
-  // ===== 页面切换 =====
-  showHomePage() {
-    this.pageHome.classList.remove('hidden');
-    this.pageGame.classList.add('hidden');
-  }
-
-  showGamePage() {
-    this.pageHome.classList.add('hidden');
-    this.pageGame.classList.remove('hidden');
-    document.getElementById('hud').classList.remove('hidden');
-    this.towerPanel.classList.remove('hidden');
   }
 
   // ===== 塔选择 =====
   selectTowerType(type) {
-    // 先取消选中已放置塔
     if (this.onDeselectTower) this.onDeselectTower();
 
     if (this.selectedTowerType === type) {
@@ -196,7 +272,6 @@ export class UIManager {
       b.classList.toggle('selected', b.dataset.type === this.selectedTowerType);
     });
 
-    // 通知 Game
     if (this.onSelectTowerType) this.onSelectTowerType(this.selectedTowerType);
   }
 
@@ -264,20 +339,20 @@ export class UIManager {
     this.overlayTitle.className = 'overlay-title fail';
     this.overlaySubtitle.textContent = 'GAME OVER';
     this.overlayScore.textContent = score;
-    this.overlayWave.textContent = `到达第 ${wave} 波`;
+    this.overlayCoins.textContent = '0';
     this.overlayStars.innerHTML = '';
     this.overlayBtn.textContent = '重新挑战';
     this.overlayNextBtn.classList.add('hidden');
     this.hideGameUI();
   }
 
-  showVictory(score, stars) {
+  showVictory(score, stars, coinReward) {
     this.gameOverlay.classList.remove('hidden');
     this.overlayTitle.textContent = '胜利！';
     this.overlayTitle.className = 'overlay-title win';
     this.overlaySubtitle.textContent = 'VICTORY';
     this.overlayScore.textContent = score;
-    this.overlayWave.textContent = '';
+    this.overlayCoins.textContent = coinReward;
     this.overlayStars.innerHTML = [1, 2, 3].map(i =>
       `<span class="result-star ${i <= stars ? 'filled' : ''}">★</span>`
     ).join('');
@@ -300,15 +375,5 @@ export class UIManager {
   showGameUI() {
     document.getElementById('hud').classList.remove('hidden');
     this.towerPanel.classList.remove('hidden');
-  }
-
-  // ===== 进度保存 =====
-  unlockLevel(levelId, stars) {
-    if (levelId > this.unlockedLevels) return;
-    this.levelStars[levelId] = Math.max(this.levelStars[levelId] || 0, stars);
-    if (levelId === this.unlockedLevels && stars >= 1) {
-      this.unlockedLevels = Math.min(this.unlockedLevels + 1, LEVELS.length);
-    }
-    this.renderLevelGrid();
   }
 }

@@ -25,7 +25,11 @@ export class Game {
     this.projectiles = [];
     this.placementPreview = null;
     this.selectedTowerType = null;
-    this.selectedTower = null; // 点击已放置的塔选中
+    this.selectedTower = null;
+    this.pendingReward = 0; // 通关待领取的金币
+
+    // 全局塔等级（由外部设置）
+    this.globalTowerLevels = { arrow: 1, cannon: 1, ice: 1, lightning: 1 };
 
     this.map = null;
     this.waveManager = new WaveManager();
@@ -38,6 +42,10 @@ export class Game {
 
     this.setupInputEvents();
     this.animate();
+  }
+
+  setGlobalTowerLevels(levels) {
+    this.globalTowerLevels = { ...levels };
   }
 
   setupInputEvents() {
@@ -69,7 +77,6 @@ export class Game {
     this.ui.hideUpgradePanel();
     this.ui.hideGameOverlay();
 
-    // 重启动画循环
     if (!this.animFrameId) {
       this.animate();
     }
@@ -127,14 +134,12 @@ export class Game {
       return;
     }
 
-    // 检查是否点击了已有塔
     const existingTower = this.getTowerAtCell(cell);
     if (existingTower) {
       this.selectPlacedTower(existingTower);
       return;
     }
 
-    // 放置新塔
     if (this.selectedTowerType) {
       this.placeTower(cell);
     }
@@ -156,7 +161,8 @@ export class Game {
     if (this.getTowerAtCell(cell)) return;
 
     const worldPos = this.map.getWorldPos(cell.col, cell.row);
-    const tower = new Tower(config, cell, worldPos, this.scene);
+    const globalLevel = this.globalTowerLevels[this.selectedTowerType] || 1;
+    const tower = new Tower(config, cell, worldPos, this.scene, globalLevel);
     this.towers.push(tower);
     this.gold -= config.cost;
     this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves,
@@ -244,7 +250,6 @@ export class Game {
   update(delta) {
     if (this.state !== 'playing') return;
 
-    // 波次管理
     if (this.waveManager.waveActive) {
       const newEnemyConfigs = this.waveManager.getSpawns(delta);
       for (const config of newEnemyConfigs) {
@@ -257,7 +262,9 @@ export class Game {
         if (this.currentWave >= this.waveManager.totalWaves) {
           this.state = 'victory';
           const stars = getStars(this.lives, this.levelConfig.startLives);
-          this.ui.showVictory(this.score, stars);
+          const coinReward = this.score + stars * 50;
+          this.pendingReward = coinReward;
+          this.ui.showVictory(this.score, stars, coinReward);
           return;
         }
         this.ui.showWaveButton(true);
@@ -265,7 +272,6 @@ export class Game {
       }
     }
 
-    // 更新敌人
     for (const enemy of this.enemies) {
       enemy.update(delta);
       if (enemy.reachedEnd) {
@@ -279,7 +285,6 @@ export class Game {
       }
     }
 
-    // 清理敌人
     for (const enemy of this.enemies) {
       if (!enemy.alive) {
         if (enemy.hp <= 0 && !enemy.reachedEnd) {
@@ -291,12 +296,10 @@ export class Game {
     }
     this.enemies = this.enemies.filter(e => e.alive);
 
-    // 更新塔
     for (const tower of this.towers) {
       tower.update(delta, this.enemies, this.projectiles);
     }
 
-    // 更新弹丸
     const newProjectiles = [];
     for (const proj of this.projectiles) {
       if (proj.alive) {

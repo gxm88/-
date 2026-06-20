@@ -7,16 +7,29 @@
 
 body {
   width: 100vw;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   background: #0a0a1a;
   font-family: 'Orbitron', sans-serif;
   color: #ffffff;
-  overflow-x: hidden;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.hidden {
+  display: none !important;
 }
 
 /* ===== 主页 ===== */
 #page-home {
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   background:
     radial-gradient(ellipse at 20% 50%, rgba(0, 240, 255, 0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 20%, rgba(180, 77, 255, 0.06) 0%, transparent 50%),
@@ -24,70 +37,164 @@ body {
     #0a0a1a;
 }
 
-.home-header {
-  text-align: center;
-  padding: 60px 24px 40px;
+.home-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, rgba(10, 10, 26, 0.95) 0%, rgba(10, 10, 26, 0) 100%);
+  z-index: 10;
 }
 
-.home-title {
+.home-title-sm {
   font-family: 'Press Start 2P', monospace;
-  font-size: 40px;
-  background: linear-gradient(135deg, #00f0ff, #b44dff, #ff2d95);
+  font-size: 14px;
+  background: linear-gradient(135deg, #00f0ff, #b44dff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: 6px;
-  margin-bottom: 12px;
 }
 
-.home-subtitle {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 14px;
-  color: #667799;
-  letter-spacing: 10px;
-}
-
-.home-main {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px 60px;
-}
-
-.section {
-  margin-bottom: 56px;
-}
-
-.section-title {
+.home-coins {
   font-family: 'Press Start 2P', monospace;
-  font-size: 16px;
+  font-size: 13px;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.home-actions {
+  display: flex;
+  gap: 24px;
+  padding: 0 20px;
+}
+
+.home-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 140px;
+  height: 140px;
+  background: rgba(15, 15, 35, 0.9);
+  border: 2px solid rgba(0, 240, 255, 0.2);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #ffffff;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.home-btn:hover,
+.home-btn:active {
+  border-color: rgba(0, 240, 255, 0.6);
+  background: rgba(20, 20, 50, 0.95);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 240, 255, 0.15);
+}
+
+.home-btn-icon {
+  font-size: 40px;
+}
+
+.home-btn-label {
+  font-size: 13px;
+  font-weight: 700;
   color: #00f0ff;
-  text-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-  margin-bottom: 8px;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
   letter-spacing: 2px;
 }
 
-.section-desc {
-  font-size: 12px;
-  color: #667799;
-  margin-bottom: 24px;
+/* ===== 子页面通用 ===== */
+.subpage-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(10, 10, 26, 0.95);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+  z-index: 10;
+  backdrop-filter: blur(10px);
 }
 
-/* ===== 关卡卡片 ===== */
-.level-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+.subpage-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: #00f0ff;
+  flex: 1;
+}
+
+.subpage-coins {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #aabbcc;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Orbitron', sans-serif;
+  white-space: nowrap;
+}
+
+.back-btn:hover,
+.back-btn:active {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: rgba(0, 240, 255, 0.5);
+  color: #00f0ff;
+}
+
+/* ===== 关卡选择页 ===== */
+#page-levels {
+  width: 100%;
+  height: 100%;
+  background: #0a0a1a;
+  display: flex;
+  flex-direction: column;
+  padding-top: 52px;
+}
+
+.level-grid-h {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 16px 16px 24px;
+  height: 100%;
+  align-items: center;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .level-card {
+  flex: 0 0 180px;
+  height: 200px;
   position: relative;
   background: rgba(15, 15, 35, 0.9);
   border: 1px solid rgba(0, 240, 255, 0.15);
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .level-card::before {
@@ -102,38 +209,26 @@ body {
   transition: opacity 0.3s;
 }
 
-.level-card:hover {
+.level-card:active {
   border-color: rgba(0, 240, 255, 0.5);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 30px rgba(0, 240, 255, 0.1);
+  transform: scale(0.97);
+  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.15);
 }
 
-.level-card:hover::before {
+.level-card:active::before {
   opacity: 1;
 }
 
 .level-card.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-  filter: grayscale(0.5);
-}
-
-.level-card.locked:hover {
-  transform: none;
-  box-shadow: none;
-  border-color: rgba(0, 240, 255, 0.15);
-}
-
-.level-card.locked:hover::before {
-  opacity: 0;
+  opacity: 0.45;
+  filter: grayscale(0.6);
 }
 
 .level-number {
   font-family: 'Press Start 2P', monospace;
-  font-size: 28px;
+  font-size: 22px;
   color: #00f0ff;
   text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-  margin-bottom: 8px;
 }
 
 .level-card.locked .level-number {
@@ -143,24 +238,21 @@ body {
 
 .level-card .level-name {
   font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
+  font-size: 10px;
   color: #ffffff;
-  margin-bottom: 4px;
 }
 
 .level-card .level-subtitle {
-  font-size: 10px;
+  font-size: 8px;
   color: #667799;
-  letter-spacing: 3px;
-  margin-bottom: 10px;
+  letter-spacing: 2px;
 }
 
 .level-difficulty {
   display: inline-block;
-  font-size: 10px;
-  padding: 3px 10px;
+  font-size: 8px;
+  padding: 2px 8px;
   border-radius: 4px;
-  margin-bottom: 8px;
   font-weight: 700;
 }
 
@@ -195,140 +287,140 @@ body {
 }
 
 .level-card .level-desc {
-  font-size: 10px;
+  font-size: 8px;
   color: #8899bb;
-  line-height: 1.5;
-  margin-bottom: 10px;
+  line-height: 1.4;
 }
 
 .level-stars {
   display: flex;
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: 3px;
 }
 
 .star {
-  font-size: 18px;
+  font-size: 16px;
   color: #334455;
 }
 
 .star.filled {
   color: #ffd700;
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
 }
 
 .level-info {
-  font-size: 9px;
+  font-size: 8px;
   color: #556688;
 }
 
 .level-lock {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  font-size: 20px;
+  top: 10px;
+  right: 10px;
+  font-size: 16px;
 }
 
-/* ===== 塔图鉴 ===== */
-.tower-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.gallery-card {
-  background: rgba(15, 15, 35, 0.9);
-  border: 1px solid rgba(0, 240, 255, 0.1);
-  border-radius: 12px;
-  padding: 20px;
-  transition: all 0.3s ease;
-}
-
-.gallery-card:hover {
-  border-color: rgba(0, 240, 255, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.08);
-}
-
-.gallery-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 0 15px currentColor;
-}
-
-.gallery-name {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
-  color: #ffffff;
-  margin-bottom: 6px;
-}
-
-.gallery-desc {
-  font-size: 10px;
-  color: #8899bb;
-  margin-bottom: 14px;
-  line-height: 1.5;
-}
-
-.gallery-stats {
+/* ===== 塔升级页 ===== */
+#page-upgrade {
+  width: 100%;
+  height: 100%;
+  background: #0a0a1a;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  padding-top: 52px;
 }
 
-.gstat {
+.upgrade-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 16px;
+  height: 100%;
+  align-items: center;
+  -webkit-overflow-scrolling: touch;
+}
+
+.upgrade-card {
+  flex: 0 0 200px;
+  background: rgba(15, 15, 35, 0.9);
+  border: 1px solid rgba(0, 240, 255, 0.12);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upgrade-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.upgrade-card-name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: #ffffff;
+}
+
+.upgrade-card-level {
+  font-size: 10px;
+  color: #00f0ff;
+}
+
+.upgrade-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 9px;
+  color: #8899bb;
+}
+
+.upgrade-card-stat {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
 }
 
-.gstat span:first-child {
+.upgrade-card-next {
+  font-size: 8px;
+  color: #00ff88;
+  padding-top: 4px;
+  border-top: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.btn-global-upgrade {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #00f0ff, #0088cc);
+  border: none;
+  border-radius: 6px;
+  color: #0a0a1a;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+}
+
+.btn-global-upgrade:hover,
+.btn-global-upgrade:active {
+  filter: brightness(1.2);
+  transform: scale(0.97);
+}
+
+.btn-global-upgrade.disabled {
+  opacity: 0.35;
+  filter: none;
+  transform: none;
+}
+
+.btn-global-upgrade.maxed {
+  background: rgba(255, 255, 255, 0.08);
   color: #667799;
-}
-
-.gstat span:last-child {
-  color: #aabbcc;
-}
-
-/* ===== 操作说明 ===== */
-.controls-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-}
-
-.control-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: rgba(15, 15, 35, 0.7);
-  border: 1px solid rgba(0, 240, 255, 0.08);
-  border-radius: 8px;
-}
-
-.control-key {
-  font-size: 13px;
-  color: #00f0ff;
-  white-space: nowrap;
-  min-width: 100px;
-}
-
-.control-desc {
-  font-size: 11px;
-  color: #8899bb;
-}
-
-.home-footer {
-  text-align: center;
-  padding: 20px;
-  font-size: 10px;
-  color: #445566;
-  border-top: 1px solid rgba(0, 240, 255, 0.06);
+  cursor: default;
 }
 
 /* ===== 游戏页面 ===== */
@@ -357,39 +449,26 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
-  padding: 12px 24px;
+  gap: 12px;
+  padding: 8px 12px;
   background: linear-gradient(180deg, rgba(10, 10, 26, 0.95) 0%, rgba(10, 10, 26, 0) 100%);
   pointer-events: none;
 }
 
 #hud .back-btn {
   pointer-events: all;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(0, 240, 255, 0.2);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-right: 8px;
-}
-
-#hud .back-btn:hover {
-  background: rgba(0, 240, 255, 0.1);
-  border-color: rgba(0, 240, 255, 0.5);
 }
 
 .hud-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
 }
 
 .hud-label {
   font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
+  font-size: 7px;
   color: #667799;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -397,31 +476,31 @@ body {
 
 .hud-value {
   font-family: 'Press Start 2P', monospace;
-  font-size: 16px;
+  font-size: 12px;
   color: #00f0ff;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
 }
 
 .hud-value.gold {
   color: #ffd700;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
 }
 
 .hud-value.status {
-  font-size: 11px;
+  font-size: 9px;
   color: #b44dff;
 }
 
 /* ===== 塔选择面板 ===== */
 #tower-panel {
   position: fixed;
-  bottom: 24px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
-  gap: 10px;
-  padding: 14px 18px;
+  gap: 6px;
+  padding: 10px 14px;
   background: rgba(10, 10, 30, 0.92);
   border: 1px solid rgba(0, 240, 255, 0.2);
   border-radius: 12px;
@@ -432,8 +511,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 8px 12px;
+  gap: 3px;
+  padding: 6px 8px;
   background: rgba(20, 20, 50, 0.8);
   border: 2px solid rgba(0, 240, 255, 0.15);
   border-radius: 8px;
@@ -441,27 +520,26 @@ body {
   transition: all 0.2s ease;
   color: #8899bb;
   font-family: 'Orbitron', sans-serif;
-  min-width: 85px;
+  min-width: 70px;
 }
 
-.tower-btn:hover {
+.tower-btn:active {
   border-color: rgba(0, 240, 255, 0.5);
   background: rgba(30, 30, 70, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.15);
+  transform: scale(0.95);
 }
 
 .tower-btn.selected {
   border-color: #00f0ff;
   background: rgba(0, 240, 255, 0.1);
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
 }
 
 .tower-icon {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 4px;
-  box-shadow: 0 0 8px currentColor;
+  box-shadow: 0 0 6px currentColor;
 }
 
 .tower-info {
@@ -472,45 +550,45 @@ body {
 }
 
 .tower-name {
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 700;
   color: #ffffff;
 }
 
 .tower-cost {
-  font-size: 9px;
+  font-size: 7px;
   color: #ffd700;
 }
 
 .tower-stats {
   display: flex;
-  gap: 6px;
-  font-size: 8px;
+  gap: 4px;
+  font-size: 7px;
   color: #667799;
 }
 
 /* ===== 波次按钮 ===== */
 .wave-btn {
   position: fixed;
-  bottom: 170px;
+  bottom: 120px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  padding: 12px 32px;
+  padding: 10px 28px;
   background: linear-gradient(135deg, #00f0ff, #b44dff);
   border: none;
   border-radius: 8px;
   color: #0a0a1a;
   font-family: 'Press Start 2P', monospace;
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
 }
 
-.wave-btn:hover {
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 0 40px rgba(0, 240, 255, 0.6);
+.wave-btn:active {
+  transform: translateX(-50%) scale(0.95);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.6);
 }
 
 /* ===== 升级面板 ===== */
@@ -523,8 +601,8 @@ body {
   background: rgba(10, 10, 30, 0.95);
   border: 1px solid rgba(0, 240, 255, 0.3);
   border-radius: 12px;
-  padding: 20px 24px;
-  min-width: 220px;
+  padding: 16px 20px;
+  min-width: 200px;
   backdrop-filter: blur(10px);
   box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
 }
@@ -533,81 +611,80 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid rgba(0, 240, 255, 0.15);
 }
 
 #upgrade-name {
   font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
+  font-size: 10px;
   color: #ffffff;
 }
 
 #upgrade-level {
   font-family: 'Press Start 2P', monospace;
-  font-size: 11px;
+  font-size: 9px;
   color: #00f0ff;
 }
 
 .upgrade-stats {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 14px;
-  font-size: 11px;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 10px;
   color: #aabbcc;
 }
 
 .next-stat {
   color: #00ff88;
-  font-size: 10px;
-  margin-top: 4px;
-  padding-top: 4px;
+  font-size: 9px;
+  margin-top: 3px;
+  padding-top: 3px;
   border-top: 1px solid rgba(0, 255, 136, 0.2);
 }
 
 .upgrade-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .btn-upgrade {
   flex: 1;
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: linear-gradient(135deg, #00f0ff, #0088cc);
   border: none;
   border-radius: 6px;
   color: #0a0a1a;
   font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
+  font-size: 9px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-upgrade:hover {
+.btn-upgrade:active {
   filter: brightness(1.2);
 }
 
 .btn-upgrade.disabled {
   opacity: 0.4;
-  cursor: not-allowed;
   filter: none;
 }
 
 .btn-sell {
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: rgba(255, 51, 51, 0.15);
   border: 1px solid rgba(255, 51, 51, 0.3);
   border-radius: 6px;
   color: #ff6666;
   font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
+  font-size: 9px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-sell:hover {
+.btn-sell:active {
   background: rgba(255, 51, 51, 0.25);
 }
 
@@ -635,63 +712,68 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
   text-align: center;
-  padding: 40px;
+  padding: 24px;
 }
 
 .overlay-title {
   font-family: 'Press Start 2P', monospace;
-  font-size: 32px;
+  font-size: 24px;
   letter-spacing: 4px;
 }
 
 .overlay-title.fail {
   color: #ff3333;
-  text-shadow: 0 0 20px rgba(255, 51, 51, 0.5);
+  text-shadow: 0 0 15px rgba(255, 51, 51, 0.5);
 }
 
 .overlay-title.win {
   color: #ffd700;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
 
 .overlay-subtitle {
   font-family: 'Orbitron', sans-serif;
-  font-size: 14px;
+  font-size: 11px;
   color: #667799;
-  letter-spacing: 8px;
-  margin-top: -12px;
+  letter-spacing: 6px;
+  margin-top: -8px;
 }
 
 .overlay-stats {
   display: flex;
-  gap: 32px;
+  gap: 24px;
 }
 
 .ostat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .ostat-label {
-  font-size: 11px;
+  font-size: 9px;
   color: #667799;
 }
 
 .ostat-value {
   font-family: 'Press Start 2P', monospace;
-  font-size: 24px;
+  font-size: 18px;
   color: #00f0ff;
-  text-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.ostat-value.gold {
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
 .overlay-stars {
   display: flex;
-  gap: 12px;
-  font-size: 36px;
+  gap: 10px;
+  font-size: 28px;
 }
 
 .result-star {
@@ -701,7 +783,7 @@ body {
 
 .result-star.filled {
   color: #ffd700;
-  text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
   animation: starPop 0.5s ease-out;
 }
 
@@ -713,27 +795,26 @@ body {
 
 .overlay-buttons {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 6px;
 }
 
 .action-btn {
-  padding: 14px 36px;
+  padding: 12px 28px;
   background: linear-gradient(135deg, #00f0ff, #b44dff);
   border: none;
   border-radius: 8px;
   color: #0a0a1a;
   font-family: 'Press Start 2P', monospace;
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
 }
 
-.action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 50px rgba(0, 240, 255, 0.6);
-  filter: brightness(1.1);
+.action-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.6);
 }
 
 .action-btn.secondary {
@@ -743,57 +824,7 @@ body {
   box-shadow: none;
 }
 
-.action-btn.secondary:hover {
+.action-btn.secondary:active {
   background: rgba(0, 240, 255, 0.2);
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
-}
-
-/* ===== 工具类 ===== */
-.hidden {
-  display: none !important;
-}
-
-/* ===== 响应式 ===== */
-@media (max-width: 768px) {
-  .home-title {
-    font-size: 24px;
-  }
-
-  .level-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  }
-
-  .tower-gallery {
-    grid-template-columns: 1fr;
-  }
-
-  #hud {
-    gap: 8px;
-    padding: 8px 12px;
-  }
-
-  .hud-value {
-    font-size: 12px;
-  }
-
-  #tower-panel {
-    gap: 4px;
-    padding: 8px 10px;
-    bottom: 12px;
-  }
-
-  .tower-btn {
-    padding: 6px 8px;
-    min-width: 65px;
-  }
-
-  .tower-name {
-    font-size: 8px;
-  }
-
-  .wave-btn {
-    bottom: 130px;
-    font-size: 11px;
-    padding: 10px 20px;
-  }
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
 }
