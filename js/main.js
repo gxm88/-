@@ -64,6 +64,32 @@ class App {
     }
   }
 
+  // 保存无尽模式当前状态快照
+  saveEndlessSnapshot() {
+    try {
+      const eg = this.endlessGame;
+      const snapshot = {
+        dayNum: eg ? eg.dayNum : 1,
+        kills: eg ? eg.kills : 0,
+        coins: eg ? eg.coins : 0,
+        wood: eg ? eg.wood : 0,
+        stone: eg ? eg.stone : 0,
+        baseHp: eg ? eg.baseHp : 100,
+        savedAt: Date.now()
+      };
+      const data = {
+        globalCoins: this.globalCoins,
+        globalTowerLevels: this.globalTowerLevels,
+        unlockedLevels: this.unlockedLevels,
+        levelStars: this.levelStars,
+        endlessSnapshot: snapshot
+      };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // ===== 回调设置 =====
   setupCallbacks() {
     // 主页导航
@@ -201,8 +227,18 @@ class App {
 
   // ===== 无尽模式回调 =====
   setupEndlessCallbacks() {
-    // 返回按钮
+    // 返回按钮：弹出确认退出对话框
     document.getElementById('btn-endless-back').addEventListener('click', () => {
+      document.getElementById('endless-exit-confirm').classList.remove('hidden');
+    });
+    // 取消
+    document.getElementById('endless-cancel-btn').addEventListener('click', () => {
+      document.getElementById('endless-exit-confirm').classList.add('hidden');
+    });
+    // 确认退出并保存存档
+    document.getElementById('endless-exit-btn').addEventListener('click', () => {
+      this.saveEndlessSnapshot();
+      document.getElementById('endless-exit-confirm').classList.add('hidden');
       this.navigateToHome();
     });
 

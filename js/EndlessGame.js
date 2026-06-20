@@ -974,7 +974,7 @@ export class EndlessGame {
     this.downX = e.clientX;
     this.downY = e.clientY;
 
-    // 右键或中键 -> 旋转/平移
+    // 右键 -> 平移地图
     if (e.button === 2) {
       this.isPanning = true;
       this.lastMouseX = e.clientX;
@@ -1061,11 +1061,22 @@ export class EndlessGame {
     if (this.isPanning) {
       const dx = e.clientX - this.lastMouseX;
       const dy = e.clientY - this.lastMouseY;
-      this.camAngle -= dx * 0.005;
-      this.camHeight = Math.max(8, Math.min(40, this.camHeight + dy * 0.08));
+      // 以当前相机角度计算右方向和前方向（都在 XZ 平面）
+      const camAng = this.camAngle;
+      // right = 相机右方向（单位向量，XZ 平面）
+      const rx = Math.sin(camAng);
+      const rz = -Math.cos(camAng);
+      // forward = 相机看向目标的方向（XZ 平面）
+      const fx = -Math.cos(camAng);
+      const fz = -Math.sin(camAng);
+      // 每像素对应世界单位距离（受相机距离影响）
+      const panFactor = this.camDist * 0.004;
+      this.camTarget.x += (-rx * dx + fx * dy) * panFactor;
+      this.camTarget.z += (-rz * dx + fz * dy) * panFactor;
       this.lastMouseX = e.clientX;
       this.lastMouseY = e.clientY;
       this.updateCamera();
+      return;
     }
   }
 
