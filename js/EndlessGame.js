@@ -155,8 +155,12 @@ export class EndlessGame {
     this.dragArcPoints = [];  // 世界坐标点数组，render() 绘制抛物线
     // 预建弧线 mesh（避免每帧创建/销毁）
     this._arcLine = null;
-    this._arcMat = new THREE.LineBasicMaterial({ color: 0x44aaff, linewidth: 2, transparent: true, opacity: 0.7 });
+    this._arcMat = new THREE.LineDashedMaterial({ color: 0x44aaff, dashSize: 0.3, gapSize: 0.2, transparent: true, opacity: 0.85 });
     this._arcGeo = new THREE.BufferGeometry();
+    // 目标圆圈指示
+    this._targetRing = null;
+    this._targetRingMat = new THREE.LineBasicMaterial({ color: 0x66ffaa, transparent: true, opacity: 0.9 });
+    this._targetRingGeo = new THREE.RingGeometry(0.8, 0.95, 32);
 
     this.onHUDUpdate = null;
     this.onGameOver = null;
@@ -574,6 +578,9 @@ export class EndlessGame {
     if (this._arcLine) { this.scene.remove(this._arcLine); this._arcLine = null; }
     if (this._arcGeo) { this._arcGeo.dispose(); this._arcGeo = null; }
     if (this._arcMat) { this._arcMat.dispose(); this._arcMat = null; }
+    if (this._targetRing) { this.scene.remove(this._targetRing); this._targetRing = null; }
+    if (this._targetRingGeo) { this._targetRingGeo.dispose(); this._targetRingGeo = null; }
+    if (this._targetRingMat) { this._targetRingMat.dispose(); this._targetRingMat = null; }
     if (this.renderer && this.renderer.domElement) {
       this.renderer.domElement.remove();
     }
@@ -599,23 +606,40 @@ export class EndlessGame {
 
   renderDragArc() {
     const pts = this.dragArcPoints;
+    // 渲染/清理抛物线
     if (pts.length < 2) {
       if (this._arcLine) { this.scene.remove(this._arcLine); this._arcLine = null; }
-      return;
+    } else {
+      const pos = new Float32Array(pts.length * 3);
+      for (let i = 0; i < pts.length; i++) {
+        pos[i * 3] = pts[i].x;
+        pos[i * 3 + 1] = pts[i].y;
+        pos[i * 3 + 2] = pts[i].z;
+      }
+      this._arcGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      this._arcGeo.setDrawRange(0, pts.length);
+      // 虚线需要计算线段距离
+      this._arcGeo.computeLineDistances();
+      if (!this._arcLine) {
+        this._arcLine = new THREE.Line(this._arcGeo, this._arcMat);
+        this.scene.add(this._arcLine);
+      }
+      this._arcLine.geometry.attributes.position.needsUpdate = true;
+      if (this._arcLine.geometry.attributes.lineDistance) {
+        this._arcLine.geometry.attributes.lineDistance.needsUpdate = true;
+      }
     }
-    const pos = new Float32Array(pts.length * 3);
-    for (let i = 0; i < pts.length; i++) {
-      pos[i * 3] = pts[i].x;
-      pos[i * 3 + 1] = pts[i].y;
-      pos[i * 3 + 2] = pts[i].z;
+    // 渲染/清理目标圈圈
+    if (this.dragTarget && this.dragTarget.isResource) {
+      if (!this._targetRing) {
+        this._targetRing = new THREE.Line(this._targetRingGeo, this._targetRingMat);
+        this._targetRing.rotation.x = -Math.PI / 2;
+        this.scene.add(this._targetRing);
+      }
+      this._targetRing.position.set(this.dragTarget.wx, 0.05, this.dragTarget.wz);
+    } else {
+      if (this._targetRing) { this.scene.remove(this._targetRing); this._targetRing = null; }
     }
-    this._arcGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this._arcGeo.setDrawRange(0, pts.length);
-    if (!this._arcLine) {
-      this._arcLine = new THREE.Line(this._arcGeo, this._arcMat);
-      this.scene.add(this._arcLine);
-    }
-    this._arcLine.geometry.attributes.position.needsUpdate = true;
   }
 
   update(dt) {
@@ -736,7 +760,7 @@ export class EndlessGame {
         const tz = worker.target.wz;
         const dx = tw - worker.group.position.x;
         const dz = tz - worker.group.position.z;
-        const dist = Math.sqrt(dx * dx + dy_helper(dx, dz));
+        const dist = Math.hypot(dx, dz);
         if (dist < 0.3) {
           // 到达目标
           if (worker.target.isResource) {
@@ -905,7 +929,7 @@ export class EndlessGame {
       for (const e of this.enemies) {
         const dx = e.group.position.x - tower.group.position.x;
         const dz = e.group.position.z - tower.group.position.z;
-        const d = Math.sqrt(dx * dx + dy_helper(dx, dz));
+        const d = Math.hypot(dx, dz);
         if (d < closestDist) { closestDist = d; target = e; }
       }
       if (target && tower.fireTimer <= 0) {
@@ -1371,11 +1395,6 @@ function findAncestorGroup(obj, candidates) {
     cur = cur.parent;
   }
   return obj;
-}
-
-// 辅助：计算 2D 距离（防止上面代码因局部变量误用 dy 出错）
-function dy_helper(dx, dz) {
-  return dx * 0 + dz; // 仅为生成第二个参数用
 }
 
 // 平滑角度插值
