@@ -145,9 +145,11 @@ export class EndlessGame {
     this.pressStartTime = 0;
     this.pressedEntity = null;    // 长按开始时按住的实体
     this.longPressMs = 320;       // 长按判定阈值（毫秒）
-    this.longPressMoved = false;  // 长按期间是否已移动
+    this.longPressMoved = false;  // 长按期间是否已移动（取消短按用）
+    this.pressMoved = false;      // press 期间是否移动过（独立标志，不影响拖拽）
     this.isDragging = false;     // 是否正在拖拽工人
     this.dragTarget = null;      // 拖拽目标 { wx, wz, isResource, resource }
+    this._longPressTimer = null;
 
     // 弧线拖拽视觉
     this.dragArcPoints = [];  // 世界坐标点数组，render() 绘制抛物线
@@ -1061,6 +1063,7 @@ export class EndlessGame {
     this.pressStartY = e.clientY;
     this.pressStartTime = performance.now();
     this.longPressMoved = false;
+    this.pressMoved = false;
     this.pressedEntity = null;
 
     // 建造模式：立即放置
@@ -1084,10 +1087,10 @@ export class EndlessGame {
     const entity = this.pickEntity();
     if (entity) {
       this.pressedEntity = entity;
-      // 工人：启动长按定时器（320ms 后进入拖拽模式）
+      // 工人：启动长按定时器（320ms 后无条件进入拖拽模式）
       if (entity.kind === 'worker') {
         this._longPressTimer = setTimeout(() => {
-          if (this.isPressing && !this.longPressMoved) {
+          if (this.isPressing && this.pressedEntity && this.pressedEntity.kind === 'worker') {
             this.isDragging = true;
           }
         }, this.longPressMs);
@@ -1126,11 +1129,8 @@ export class EndlessGame {
       return;
     }
 
-    // 拖拽工人：计算弧线目标
+    // 拖拽工人：进入拖拽模式后，计算弧线目标
     if (this.isDragging && this.pressedEntity && this.pressedEntity.kind === 'worker') {
-      const moved = Math.abs(e.clientX - this.pressStartX) + Math.abs(e.clientY - this.pressStartY);
-      this.longPressMoved = true;
-      const wp = this.screenToWorld(e.clientX, e.clientY);
       const groundHit = this.raycaster.intersectObjects(this.groundMeshes, false);
       const resHit = this.raycaster.intersectObjects(this.resources.map(r => r.mesh), true);
       let target = null;
@@ -1144,15 +1144,14 @@ export class EndlessGame {
         const pt = groundHit[0].point;
         this.dragTarget = { wx: pt.x, wz: pt.z, isResource: false };
       }
-      // 更新弧线
       this.updateDragArc();
       return;
     }
 
-    // 长按期间检测是否移动了
+    // 长按期间：记录是否移动（取消短按用，不影响拖拽）
     if (this.isPressing && this.pressedEntity) {
       const moved = Math.abs(e.clientX - this.pressStartX) + Math.abs(e.clientY - this.pressStartY);
-      if (moved > 8) this.longPressMoved = true;
+      if (moved > 8) this.pressMoved = true;
     }
   }
 
@@ -1171,7 +1170,7 @@ export class EndlessGame {
       this.isDragging = false;
       this.dragArcPoints = [];
       if (this.pressedEntity && this.pressedEntity.kind === 'worker' && this.dragTarget) {
-        const worker = this.pressedEntity.worker;
+        const worker = this.pressedEntity.entity;
         worker.target = { ...this.dragTarget };
         worker.state = 'moving';
       }
@@ -1180,9 +1179,9 @@ export class EndlessGame {
       return;
     }
 
-    // 如果长按期间移动了，不触发短按（拖拽取消）
-    if (this.longPressMoved) {
-      this.longPressMoved = false;
+    // 如果长按期间移动了，不触发短按（但仍然释放拖拽）
+    if (this.pressMoved) {
+      this.pressMoved = false;
       this.pressedEntity = null;
       return;
     }
@@ -1310,7 +1309,7 @@ export class EndlessGame {
 
   updateDragArc() {
     if (!this.pressedEntity || !this.dragTarget) { this.dragArcPoints = []; return; }
-    const worker = this.pressedEntity.worker;
+    const worker = this.pressedEntity.entity;
     if (!worker) { this.dragArcPoints = []; return; }
     const sx = worker.group.position.x;
     const sz = worker.group.position.z;
