@@ -230,15 +230,15 @@ class App {
       });
     };
 
-    // Canvas 输入
+    // Canvas 输入 — 全部使用 CSS 像素（offsetX/clientX），与 EndlessGame 的 resize() 保持一致
     this.endlessCanvas.addEventListener('mousedown', (e) => {
-      this.endlessGame.handleMouseDown(e.offsetX * devicePixelRatio, e.offsetY * devicePixelRatio);
+      this.endlessGame.handleMouseDown(e.offsetX, e.offsetY);
     });
     this.endlessCanvas.addEventListener('mousemove', (e) => {
-      this.endlessGame.handleMouseMove(e.offsetX * devicePixelRatio, e.offsetY * devicePixelRatio);
+      this.endlessGame.handleMouseMove(e.offsetX, e.offsetY);
     });
     this.endlessCanvas.addEventListener('mouseup', (e) => {
-      this.endlessGame.handleMouseUp(e.offsetX * devicePixelRatio, e.offsetY * devicePixelRatio);
+      this.endlessGame.handleMouseUp(e.offsetX, e.offsetY);
     });
     this.endlessCanvas.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -250,28 +250,19 @@ class App {
       e.preventDefault();
       const t = e.touches[0];
       const rect = this.endlessCanvas.getBoundingClientRect();
-      this.endlessGame.handleMouseDown(
-        (t.clientX - rect.left) * devicePixelRatio,
-        (t.clientY - rect.top) * devicePixelRatio
-      );
+      this.endlessGame.handleMouseDown(t.clientX - rect.left, t.clientY - rect.top);
     });
     this.endlessCanvas.addEventListener('touchmove', (e) => {
       e.preventDefault();
       const t = e.touches[0];
       const rect = this.endlessCanvas.getBoundingClientRect();
-      this.endlessGame.handleMouseMove(
-        (t.clientX - rect.left) * devicePixelRatio,
-        (t.clientY - rect.top) * devicePixelRatio
-      );
+      this.endlessGame.handleMouseMove(t.clientX - rect.left, t.clientY - rect.top);
     });
     this.endlessCanvas.addEventListener('touchend', (e) => {
       e.preventDefault();
       const t = e.changedTouches[0];
       const rect = this.endlessCanvas.getBoundingClientRect();
-      this.endlessGame.handleMouseUp(
-        (t.clientX - rect.left) * devicePixelRatio,
-        (t.clientY - rect.top) * devicePixelRatio
-      );
+      this.endlessGame.handleMouseUp(t.clientX - rect.left, t.clientY - rect.top);
     });
 
     // HUD 更新

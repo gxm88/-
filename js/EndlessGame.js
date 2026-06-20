@@ -205,13 +205,10 @@ export class EndlessGame {
 
     // 战争迷雾: key(tx,ty) -> FOG_HIDDEN|FOG_EXPLORED|FOG_VISIBLE
     this.fogMap = new Map();
-    // 初始基地周围可见
-    this.revealArea(BASE_X, BASE_Y, BASE_RADIUS + 2);
 
     this.running = false;
     this.paused = false;
 
-    this.resize();
     this.onResize = () => this.resize();
     window.addEventListener('resize', this.onResize);
 
@@ -273,8 +270,6 @@ export class EndlessGame {
     this.enemiesThisNight = 0;
     this.maxEnemiesPerNight = 4;
     this.kills = 0;
-    this.camX = BASE_X * TILE - this.canvas.width / 2;
-    this.camY = BASE_Y * TILE - this.canvas.height / 2;
     this.zoom = 1;
     this.targetZoom = 1;
     this.buildMode = null;
@@ -284,6 +279,12 @@ export class EndlessGame {
     this.resourceCache.clear();
     this.fogMap.clear();
     this.revealArea(BASE_X, BASE_Y, BASE_RADIUS + 2);
+
+    // 关键：在页面显示后重新计算 canvas 尺寸，并设置相机中心到基地
+    this.resize();
+    this.camX = BASE_X * TILE;
+    this.camY = BASE_Y * TILE;
+
     this.running = true;
     this.lastTime = performance.now();
     this.updateHUD();
@@ -301,8 +302,13 @@ export class EndlessGame {
   }
 
   resize() {
-    this.canvas.width = this.canvas.clientWidth * devicePixelRatio;
-    this.canvas.height = this.canvas.clientHeight * devicePixelRatio;
+    // 用 CSS 像素（clientWidth/clientHeight），不用 *devicePixelRatio，保证坐标系统与世界单位（TILE=40）一致
+    let cw = this.canvas.clientWidth;
+    let ch = this.canvas.clientHeight;
+    if (!cw || cw < 10) cw = window.innerWidth || 800;
+    if (!ch || ch < 10) ch = window.innerHeight || 600;
+    this.canvas.width = cw;
+    this.canvas.height = ch;
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
