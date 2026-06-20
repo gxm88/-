@@ -138,6 +138,12 @@ export class EndlessGame {
     this.selectedTower = null;  // 选中的塔
     this.selectedWorker = null; // 选中的工人
 
+    // 拖拽放置状态（从底部按钮长按→拖到地图）
+    this._dragBuildMode = null;   // 当前拖拽放置的类型
+    this._dragBuildGhost = null;  // 预览幽灵 mesh（Group）
+    this._dragHighlight = null;   // 当前格高亮（绿色圈=可放 红=不可）
+    this._dragIsValid = false;    // 当前位置是否可放置
+
     // 长按拖拽状态
     this.isPressing = false;
     this.pressStartX = 0;
@@ -1402,6 +1408,164 @@ export class EndlessGame {
   }
 
   // ========== 外部接口 ==========
+  // 开始拖拽放置（用于从底部按钮长按后调用）
+  startDragBuild(type) {
+    this._dragBuildMode = type;
+    // 显示所有可建造标记
+    for (const m of this.markers) m.visible = true;
+    // 创建幽灵预览
+    this._makeBuildGhost(type);
+    // 创建当前位置高亮圈
+    if (!this._dragHighlight) {
+      const hGeo = new THREE.RingGeometry(CELL_SIZE * 0.45, CELL_SIZE * 0.5, 24);
+      const hMat = new THREE.MeshBasicMaterial({ color: 0x66ff88, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+      this._dragHighlight = new THREE.Mesh(hGeo, hMat);
+      this._dragHighlight.rotation.x = -Math.PI / 2;
+      this._dragHighlight.position.y = 0.1;
+      this._dragHighlight.visible = false;
+      this.scene.add(this._dragHighlight);
+    }
+  }
+
+  // 结束拖拽放置（在当前鼠标位置尝试放置；若无坐标则只清理）
+  endDragBuild(clientX, clientY) {
+    let placed = false;
+    if (this._dragBuildMode && clientX != null && clientY != null) {
+      // 用射线找位置
+      const prevMouse = this.mouse.clone();
+      this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
+      this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      const intersects = this.raycaster.intersectObjects(this.markers, false);
+      if (intersects.length > 0) {
+        const ud = intersects[0].object.userData;
+        const type = this._dragBuildMode;
+        if (type === 'wall') placed = this.buildWall(ud.worldX, ud.worldZ);
+        else if (type === 'worker') placed = this.buildWorker(ud.worldX, ud.worldZ);
+        else placed = this.buildTower(type, ud.worldX, ud.worldZ);
+      }
+      this.mouse.copy(prevMouse);
+    }
+    this._cleanupDragBuild();
+    if (placed) this.updateHUD();
+    return placed;
+  }
+
+  // 每帧更新拖拽预览位置
+  updateDragBuild(clientX, clientY) {
+    if (!this._dragBuildMode) return;
+    this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    const intersects = this.raycaster.intersectObjects(this.markers, false);
+    let targetCell = null;
+    if (intersects.length > 0) {
+      const ud = intersects[0].object.userData;
+      targetCell = { wx: ud.worldX, wz: ud.worldZ };
+    }
+    // 如果有幽灵，移动到当前鼠标位置（若在格子上则贴格子）
+    if (this._dragBuildGhost) {
+      if (targetCell) {
+        this._dragBuildGhost.position.set(targetCell.wx, 0, targetCell.wz);
+        this._dragBuildGhost.visible = true;
+      } else {
+        // 贴着地面显示
+        const groundHits = this.raycaster.intersectObjects(this.groundMeshes, false);
+        if (groundHits.length > 0) {
+          const p = groundHits[0].point;
+          this._dragBuildGhost.position.set(p.x, 0, p.z);
+          this._dragBuildGhost.visible = true;
+        } else {
+          this._dragBuildGhost.visible = false;
+        }
+      }
+    }
+    // 高亮当前格：绿色=可放置，红色=不可放置
+    if (this._dragHighlight) {
+      if (targetCell) {
+        this._dragHighlight.visible = true;
+        this._dragHighlight.position.set(targetCell.wx, 0.1, targetCell.wz);
+        this._dragHighlight.material.color.setHex(0x66ff88);
+        this._dragIsValid = true;
+      } else {
+        this._dragHighlight.visible = true;
+        // 贴鼠标位置显示红圈
+        const groundHits = this.raycaster.intersectObjects(this.groundMeshes, false);
+        if (groundHits.length > 0) {
+          const p = groundHits[0].point;
+          this._dragHighlight.position.set(p.x, 0.1, p.z);
+        }
+        this._dragHighlight.material.color.setHex(0xff5566);
+        this._dragIsValid = false;
+      }
+    }
+  }
+
+  // 取消/清理拖拽放置
+  cancelDragBuild() {
+    this._cleanupDragBuild();
+  }
+
+  _cleanupDragBuild() {
+    this._dragBuildMode = null;
+    if (this._dragBuildGhost) {
+      this.scene.remove(this._dragBuildGhost);
+      this._dragBuildGhost.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
+      this._dragBuildGhost = null;
+    }
+    if (this._dragHighlight) {
+      this.scene.remove(this._dragHighlight);
+      this._dragHighlight.geometry.dispose();
+      this._dragHighlight.material.dispose();
+      this._dragHighlight = null;
+    }
+    this._dragIsValid = false;
+    // 隐藏所有可建造标记
+    for (const m of this.markers) m.visible = false;
+  }
+
+  _makeBuildGhost(type) {
+    const group = new THREE.Group();
+    if (type === 'wall') {
+      const g = new THREE.BoxGeometry(CELL_SIZE * 0.95, 0.8, CELL_SIZE * 0.95);
+      const m = new THREE.MeshBasicMaterial({ color: 0x887755, transparent: true, opacity: 0.55, wireframe: false });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.position.y = 0.4;
+      group.add(mesh);
+    } else if (type === 'worker') {
+      const g = new THREE.OctahedronGeometry(0.45);
+      const m = new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.55 });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.position.y = 0.5;
+      group.add(mesh);
+    } else {
+      const cfg = TOWER_CONFIGS[type] || { color: 0xffffff };
+      // 基座
+      const bg = new THREE.BoxGeometry(CELL_SIZE * 0.8, 0.3, CELL_SIZE * 0.8);
+      const bm = new THREE.MeshBasicMaterial({ color: 0x444466, transparent: true, opacity: 0.55 });
+      const base = new THREE.Mesh(bg, bm);
+      base.position.y = 0.15;
+      group.add(base);
+      // 顶部
+      let topGeo;
+      if (type === 'arrow') topGeo = new THREE.ConeGeometry(0.35, 1.0, 6);
+      else if (type === 'cannon') topGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+      else if (type === 'ice') topGeo = new THREE.OctahedronGeometry(0.5);
+      else topGeo = new THREE.DodecahedronGeometry(0.5);
+      const tm = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.55 });
+      const top = new THREE.Mesh(topGeo, tm);
+      top.position.y = 0.8;
+      group.add(top);
+    }
+    group.visible = false;
+    this.scene.add(group);
+    this._dragBuildGhost = group;
+  }
+
   setBuildMode(mode) {
     this.buildMode = mode;
     // 显示/隐藏建造标记

@@ -242,21 +242,85 @@ class App {
       this.navigateToHome();
     });
 
-    // 底部面板按钮
+    // 底部面板按钮（短按=切换选中，长按拖拽=放置到地图
     const panelBtns = document.querySelectorAll('#endless-panel .endless-panel-btn');
+    const DRAG_THRESHOLD = 8;
+    const LONG_PRESS_MS = 200;
     panelBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+      let dragging = false;
+      let pressTimer = null;
+      let startX = 0, startY = 0;
+      let moved = false;
+
+      const clearPress = () => {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      };
+
+      btn.addEventListener('pointerdown', (e) => {
         const action = btn.dataset.action;
-        panelBtns.forEach(b => b.classList.remove('selected'));
-        if (this.endlessBuildMode === action) {
+        dragging = false;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        // 短按时不立即进入 build 模式，等 mouseup 决定
+        // 但是进入长按启动拖拽放置
+        pressTimer = setTimeout(() => {
+          if (this.endlessGame._dragBuildMode != null) return;
+          dragging = true;
           this.endlessBuildMode = null;
+          panelBtns.forEach(b => b.classList.remove('selected'));
           this.endlessGame.setBuildMode(null);
-        } else {
-          this.endlessBuildMode = action;
-          this.endlessGame.setBuildMode(action);
-          btn.classList.add('selected');
+          this.endlessGame.startDragBuild(action);
+        }, LONG_PRESS_MS);
+      });
+
+      btn.addEventListener('pointermove', (e) => {
+        if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > DRAG_THRESHOLD) {
+          moved = true;
+        }
+        if (dragging) {
+          this.endlessGame.updateDragBuild(e.clientX, e.clientY);
         }
       });
+
+      const onUp = (e) => {
+        clearPress();
+        if (dragging) {
+          dragging = false;
+          this.endlessGame.endDragBuild(e.clientX, e.clientY);
+        } else {
+          // 短按=切换建造模式（原逻辑）
+          const action = btn.dataset.action;
+          if (this.endlessBuildMode === action) {
+            this.endlessBuildMode = null;
+            this.endlessGame.setBuildMode(null);
+          } else {
+            this.endlessBuildMode = action;
+            this.endlessGame.setBuildMode(action);
+            panelBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+          }
+        }
+      };
+      btn.addEventListener('pointerup', onUp);
+      btn.addEventListener('pointercancel', onUp);
+      btn.addEventListener('pointerleave', (e) => {
+        if (dragging) {
+          // 移出按钮时继续跟踪全局 move/up（通过全局监听已在上面绑定）
+        }
+      });
+    });
+
+    // 全局鼠标移动/释放用于拖拽放置跟随鼠标（即使离开按钮）
+    window.addEventListener('pointermove', (e) => {
+      if (this.endlessGame && this.endlessGame._dragBuildMode != null) {
+        this.endlessGame.updateDragBuild(e.clientX, e.clientY);
+      }
+    });
+    window.addEventListener('pointerup', (e) => {
+      if (this.endlessGame && this.endlessGame._dragBuildMode != null) {
+        this.endlessGame.endDragBuild(e.clientX, e.clientY);
+      }
     });
 
     // HUD 更新
