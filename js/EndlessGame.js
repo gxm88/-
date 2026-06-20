@@ -1,12 +1,12 @@
 // 无尽生存模式 - 2D 塔防
-// 程序生成无限地图 | 昼夜循环 | 基地扩张 | 资源采集 | 怪物袭击
+// 程序生成无限地图 | 昼夜循环 | 基地扩张 | 激光采集 | 怪物袭击
 
-const TILE = 40;            // 每格像素
-const WORLD_W = 256;        // 世界宽(格)
-const WORLD_H = 256;        // 世界高(格)
-const BASE_X = 128;         // 初始基地X
-const BASE_Y = 128;         // 初始基地Y
-const BASE_RADIUS = 4;      // 基地初始半径(格)
+const TILE = 40;
+const WORLD_W = 256;
+const WORLD_H = 256;
+const BASE_X = 128;
+const BASE_Y = 128;
+const BASE_RADIUS = 4;
 
 // 地形
 const GRASS = 0;
@@ -15,9 +15,20 @@ const ROCK = 2;
 const WATER = 3;
 const GOLD = 4;
 
+// 资源属性
+const RES_INFO = {
+  [TREE]: { name: 'tree', hp: 40, reward: 5, colorDay: '#3a8a3a', colorNight: '#1a3a1a' },
+  [ROCK]: { name: 'rock', hp: 70, reward: 4, colorDay: '#8a8a8a', colorNight: '#4a4a4a' },
+  [GOLD]: { name: 'gold', hp: 55, reward: 8, colorDay: '#ffd700', colorNight: '#8a6a00' }
+};
+
 // 昼夜(秒)
 const DAY_LEN = 75;
 const NIGHT_LEN = 35;
+
+// 激光参数
+const LASER_RANGE = TILE * 1.2;
+const LASER_DPS = 22;     // 每秒伤害
 
 // 噪音函数
 function noise2D(x, y) {
@@ -28,7 +39,6 @@ function noise2D(x, y) {
 }
 
 function getTerrain(x, y) {
-  // 基地附近清理
   const dx = x - BASE_X, dy = y - BASE_Y;
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist < BASE_RADIUS + 1) return GRASS;
@@ -37,7 +47,6 @@ function getTerrain(x, y) {
   const n2 = noise2D(x * 1.3 + 5, y * 1.3 + 5);
 
   if (dist < BASE_RADIUS + 3) {
-    // 基地附近：少量资源
     if (n < 0.12) return TREE;
     if (n < 0.18) return ROCK;
     return GRASS;
@@ -50,29 +59,73 @@ function getTerrain(x, y) {
   return GRASS;
 }
 
+// ============== 多边形绘制工具 ==============
+
+function drawPolygon(ctx, cx, cy, radius, sides, rotation = 0) {
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const a = rotation + (i * Math.PI * 2) / sides;
+    const x = cx + Math.cos(a) * radius;
+    const y = cy + Math.sin(a) * radius;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function drawDiamond(ctx, cx, cy, radiusX, radiusY, rotation = 0) {
+  ctx.beginPath();
+  const points = [
+    [0, -radiusY],
+    [radiusX, 0],
+    [0, radiusY],
+    [-radiusX, 0]
+  ];
+  for (let i = 0; i < 4; i++) {
+    const [px, py] = points[i];
+    const cos = Math.cos(rotation), sin = Math.sin(rotation);
+    const x = cx + px * cos - py * sin;
+    const y = cy + px * sin + py * cos;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function drawStar(ctx, cx, cy, outerR, innerR, points, rotation = 0) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = rotation + (i * Math.PI) / points;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+// ============== 主类 ==============
+
 export class EndlessGame {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
-    // 单位
-    this.towers = [];       // 防御塔(固定)
-    this.walls = [];        // 围墙(固定)
-    this.workers = [];      // 工人(移动)
-    this.enemies = [];      // 怪物
-    this.projectiles = [];  // 弹丸
+    this.towers = [];
+    this.walls = [];
+    this.workers = [];
+    this.enemies = [];
+    this.projectiles = [];
 
-    // 基地
     this.baseHP = 100;
     this.baseMaxHP = 100;
-    this.baseRadius = BASE_RADIUS; // 当前扩张半径
+    this.baseRadius = BASE_RADIUS;
 
-    // 资源
     this.wood = 50;
     this.stone = 30;
     this.coins = 100;
 
-    // 昼夜
     this.dayTime = 0;
     this.dayNum = 1;
     this.isNight = false;
@@ -82,27 +135,24 @@ export class EndlessGame {
     this.maxEnemiesPerNight = 4;
     this.kills = 0;
 
-    // 相机
     this.camX = BASE_X * TILE - 400;
     this.camY = BASE_Y * TILE - 240;
     this.zoom = 1;
     this.targetZoom = 1;
 
-    // 拖拽
     this.dragging = false;
     this.dragStartX = 0;
     this.dragStartY = 0;
     this.dragCamX = 0;
     this.dragCamY = 0;
-    this.dragUnit = null;      // 正在拖拽的单位
-    this.dragUnitLine = null;  // 拖拽线终点(世界坐标)
+    this.dragUnit = null;
+    this.dragUnitLine = null;
 
-    // 建造模式
-    this.buildMode = null;  // 'tower' | 'wall' | 'worker' | null
+    this.buildMode = null;
     this.hoverCell = null;
     this.selectedUnit = null;
 
-    // 资源节点(程序生成缓存)
+    // 资源节点: key -> { key, type, x, y, hp, maxHp, shakeT, dead }
     this.resourceCache = new Map();
 
     this.running = false;
@@ -116,7 +166,6 @@ export class EndlessGame {
     this.animId = null;
   }
 
-  // ===== 初始化 =====
   start() {
     this.towers = [];
     this.walls = [];
@@ -169,11 +218,9 @@ export class EndlessGame {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  // ===== 游戏循环 =====
   loop() {
     if (!this.running) return;
     this.animId = requestAnimationFrame(() => this.loop());
-
     const now = performance.now();
     let dt = (now - this.lastTime) / 1000;
     this.lastTime = now;
@@ -184,7 +231,6 @@ export class EndlessGame {
     this.render();
   }
 
-  // ===== 更新 =====
   update(dt) {
     // 昼夜
     this.dayTime += dt;
@@ -198,7 +244,7 @@ export class EndlessGame {
         this.maxEnemiesPerNight = 4 + this.dayNum * 2;
       } else {
         this.dayNum++;
-        this.coins += 20 + this.dayNum * 5; // 存活奖励
+        this.coins += 20 + this.dayNum * 5;
       }
       this.updateHUD();
     }
@@ -220,10 +266,17 @@ export class EndlessGame {
     for (const t of this.towers) this.updateTower(t, dt);
     for (const p of this.projectiles) this.updateProjectile(p, dt);
 
+    // 更新资源节点震动计时
+    for (const res of this.resourceCache.values()) {
+      if (res.shakeT > 0) res.shakeT -= dt;
+    }
+
     // 清理
     this.workers = this.workers.filter(w => w.alive);
     this.enemies = this.enemies.filter(e => e.alive);
     this.projectiles = this.projectiles.filter(p => p.alive);
+    this.towers = this.towers.filter(t => t.alive);
+    this.walls = this.walls.filter(w => w.alive);
 
     // 检测基地被攻击
     for (const e of this.enemies) {
@@ -241,31 +294,47 @@ export class EndlessGame {
       }
     }
 
-    // 缩放平滑
     this.zoom += (this.targetZoom - this.zoom) * 5 * dt;
-
     this.updateHUD();
   }
 
   updateWorker(w, dt) {
-    if (w.gathering) {
-      // 正在采集
-      w.gatherTimer -= dt;
-      if (w.gatherTimer <= 0) {
-        w.gathering = false;
-        // 采集完成，返回基地
-        if (w.targetResource) {
-          const res = w.targetResource;
-          if (res.type === TREE) this.wood += 5;
-          else if (res.type === ROCK) this.stone += 4;
-          else if (res.type === GOLD) this.coins += 8;
-          this.resourceCache.delete(res.key);
-          w.targetResource = null;
-        }
+    // 激光采集
+    if (w.targetResource) {
+      const res = w.targetResource;
+      const cached = this.resourceCache.get(res.key);
+      if (!cached || cached.hp <= 0) {
+        // 资源已被破坏，返回待命
+        w.targetResource = null;
         w.targetX = BASE_X * TILE + (Math.random() - 0.5) * TILE * 2;
         w.targetY = BASE_Y * TILE + (Math.random() - 0.5) * TILE * 2;
+      } else {
+        const dx = cached.x - w.x;
+        const dy = cached.y - w.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > LASER_RANGE) {
+          // 继续靠近
+          const speed = 80;
+          w.x += (dx / dist) * speed * dt;
+          w.y += (dy / dist) * speed * dt;
+        } else {
+          // 在射程内，发射激光
+          cached.hp -= LASER_DPS * dt;
+          cached.shakeT = 0.15;
+          if (cached.hp <= 0) {
+            // 采集成功
+            if (cached.type === TREE) this.wood += RES_INFO[TREE].reward;
+            else if (cached.type === ROCK) this.stone += RES_INFO[ROCK].reward;
+            else if (cached.type === GOLD) this.coins += RES_INFO[GOLD].reward;
+            this.resourceCache.delete(cached.key);
+            w.targetResource = null;
+            // 回到基地待命
+            w.targetX = BASE_X * TILE + (Math.random() - 0.5) * TILE * 2;
+            w.targetY = BASE_Y * TILE + (Math.random() - 0.5) * TILE * 2;
+          }
+        }
+        return;
       }
-      return;
     }
 
     // 移动到目标
@@ -273,15 +342,8 @@ export class EndlessGame {
     const dy = w.targetY - w.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 4) {
-      // 到达目标
-      if (w.targetResource && !w.gathering) {
-        w.gathering = true;
-        w.gatherTimer = 2.0;
-      } else {
-        // 到了基地，待命
-        w.targetX = w.x;
-        w.targetY = w.y;
-      }
+      w.targetX = w.x;
+      w.targetY = w.y;
       return;
     }
     const speed = 80;
@@ -290,7 +352,6 @@ export class EndlessGame {
   }
 
   updateEnemy(e, dt) {
-    // 走向基地
     const dx = BASE_X * TILE - e.x;
     const dy = BASE_Y * TILE - e.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -303,7 +364,6 @@ export class EndlessGame {
       const wdy = e.y - wall.y;
       const wdist = Math.sqrt(wdx * wdx + wdy * wdy);
       if (wdist < TILE * 0.8) {
-        // 攻击围墙
         wall.hp -= e.damage * dt * 2;
         blocked = true;
         if (wall.hp <= 0) wall.alive = false;
@@ -320,7 +380,6 @@ export class EndlessGame {
     t.fireTimer -= dt;
     if (t.fireTimer > 0) return;
 
-    // 找最近敌人
     let closest = null;
     let closestDist = t.range * TILE;
     for (const e of this.enemies) {
@@ -335,39 +394,25 @@ export class EndlessGame {
     if (!closest) return;
 
     t.fireTimer = t.fireRate;
-    this.projectiles.push({
-      x: t.x, y: t.y,
-      target: closest,
-      speed: 350,
-      damage: t.damage,
-      alive: true
-    });
+    // 激光塔瞬时攻击 + 视觉脉冲
+    closest.hp -= t.damage;
+    t.beamTarget = closest;
+    t.beamT = 0.12;
+    if (closest.hp <= 0) {
+      closest.alive = false;
+      this.kills++;
+      this.coins += closest.reward;
+    }
   }
 
   updateProjectile(p, dt) {
-    if (!p.target || !p.target.alive) {
-      p.alive = false;
-      return;
-    }
-    const dx = p.target.x - p.x;
-    const dy = p.target.y - p.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 10) {
-      p.target.hp -= p.damage;
-      p.alive = false;
-      if (p.target.hp <= 0) {
-        p.target.alive = false;
-        this.kills++;
-        this.coins += p.target.reward;
-      }
-      return;
-    }
-    p.x += (dx / dist) * p.speed * (1 / 60);
-    p.y += (dy / dist) * p.speed * (1 / 60);
+    // 保留旧逻辑以防未迁移，但我们现在塔用激光
+    if (p.ttl === undefined) p.ttl = 0.5;
+    p.ttl -= dt;
+    if (p.ttl <= 0) { p.alive = false; return; }
   }
 
   spawnEnemy() {
-    // 从屏幕边缘外生成
     const angle = Math.random() * Math.PI * 2;
     const spawnDist = 400 + Math.random() * 200;
     const x = BASE_X * TILE + Math.cos(angle) * spawnDist;
@@ -380,7 +425,9 @@ export class EndlessGame {
       damage: 3 + tier * 2,
       reward: 5 + tier * 3 + this.dayNum,
       alive: true,
-      tier
+      tier,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 1.5
     });
   }
 
@@ -400,10 +447,7 @@ export class EndlessGame {
     const h = this.canvas.height;
 
     ctx.clearRect(0, 0, w, h);
-
-    // 背景
-    const bgColor = this.isNight ? '#0a0a18' : '#1a2a10';
-    ctx.fillStyle = bgColor;
+    ctx.fillStyle = this.isNight ? '#0a0a18' : '#1a2a10';
     ctx.fillRect(0, 0, w, h);
 
     ctx.save();
@@ -411,7 +455,6 @@ export class EndlessGame {
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camX, -this.camY);
 
-    // 可见范围
     const halfW = w / this.zoom / 2;
     const halfH = h / this.zoom / 2;
     const minX = Math.floor((this.camX - halfW) / TILE) - 1;
@@ -419,7 +462,7 @@ export class EndlessGame {
     const minY = Math.floor((this.camY - halfH) / TILE) - 1;
     const maxY = Math.ceil((this.camY + halfH) / TILE) + 1;
 
-    // 绘制地形
+    // 绘制地形 + 资源
     for (let tx = minX; tx <= maxX; tx++) {
       for (let ty = minY; ty <= maxY; ty++) {
         if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) continue;
@@ -427,66 +470,28 @@ export class EndlessGame {
         const px = tx * TILE;
         const py = ty * TILE;
 
-        switch (terrain) {
-          case GRASS:
-            ctx.fillStyle = this.isNight ? '#1a2a14' : '#3a5a24';
-            break;
-          case TREE: {
-            ctx.fillStyle = this.isNight ? '#1a2a14' : '#3a5a24';
-            ctx.fillRect(px, py, TILE, TILE);
-            // 检查缓存
-            const key = `${tx},${ty}`;
-            if (!this.resourceCache.has(key)) {
-              ctx.fillStyle = this.isNight ? '#1a3a0a' : '#2a5a18';
-              ctx.beginPath();
-              ctx.arc(px + TILE / 2, py + TILE / 2, TILE * 0.35, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = this.isNight ? '#3a2a14' : '#6a4a24';
-              ctx.fillRect(px + TILE / 2 - 2, py + TILE / 2, 4, TILE / 3);
-            }
-            continue;
-          }
-          case ROCK: {
-            ctx.fillStyle = this.isNight ? '#1a2a14' : '#3a5a24';
-            ctx.fillRect(px, py, TILE, TILE);
-            const key = `${tx},${ty}`;
-            if (!this.resourceCache.has(key)) {
-              ctx.fillStyle = this.isNight ? '#3a3a3a' : '#6a6a6a';
-              ctx.beginPath();
-              ctx.moveTo(px + TILE / 2, py + TILE * 0.15);
-              ctx.lineTo(px + TILE * 0.85, py + TILE * 0.6);
-              ctx.lineTo(px + TILE * 0.6, py + TILE * 0.9);
-              ctx.lineTo(px + TILE * 0.15, py + TILE * 0.7);
-              ctx.lineTo(px + TILE * 0.2, py + TILE * 0.3);
-              ctx.fill();
-              ctx.fillStyle = this.isNight ? '#2a2a2a' : '#5a5a5a';
-              ctx.beginPath();
-              ctx.arc(px + TILE * 0.45, py + TILE * 0.5, TILE * 0.2, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            continue;
-          }
-          case WATER:
-            ctx.fillStyle = this.isNight ? '#0a1a3a' : '#1a4a8a';
-            break;
-          case GOLD: {
-            ctx.fillStyle = this.isNight ? '#1a2a14' : '#3a5a24';
-            ctx.fillRect(px, py, TILE, TILE);
-            const key = `${tx},${ty}`;
-            if (!this.resourceCache.has(key)) {
-              ctx.fillStyle = this.isNight ? '#4a3a00' : '#ffd700';
-              ctx.beginPath();
-              ctx.arc(px + TILE / 2, py + TILE / 2, TILE * 0.2, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = this.isNight ? '#3a2a00' : '#ffaa00';
-              ctx.beginPath();
-              ctx.arc(px + TILE * 0.35, py + TILE * 0.35, TILE * 0.12, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            continue;
-          }
+        // 地面底色
+        if (terrain === WATER) {
+          ctx.fillStyle = this.isNight ? '#0a1a3a' : '#1a4a8a';
+        } else {
+          ctx.fillStyle = this.isNight ? '#1a2a14' : '#3a5a24';
         }
         ctx.fillRect(px, py, TILE, TILE);
+
+        // 资源几何体
+        const key = `${tx},${ty}`;
+        const cached = this.resourceCache.get(key);
+        // 有 cached 说明正在被采集/已被采集(hp>0 才显示)，否则检查地形是否是资源
+        if (cached) {
+          // 显示带 HP 的资源
+          this.drawResource(ctx, px + TILE / 2, py + TILE / 2, cached.type, cached.hp, cached.maxHp, cached.shakeT);
+          continue;
+        }
+        if (terrain === TREE || terrain === ROCK || terrain === GOLD) {
+          const info = RES_INFO[terrain];
+          this.drawResource(ctx, px + TILE / 2, py + TILE / 2, terrain, info.hp, info.hp, 0);
+          continue;
+        }
       }
     }
 
@@ -506,35 +511,38 @@ export class EndlessGame {
       ctx.stroke();
     }
 
-    // 基地
     this.drawBase(ctx);
 
-    // 围墙
-    for (const wall of this.walls) {
-      this.drawWall(ctx, wall);
-    }
+    for (const wall of this.walls) this.drawWall(ctx, wall);
+    for (const t of this.towers) this.drawTower(ctx, t);
 
-    // 塔
-    for (const t of this.towers) {
-      this.drawTower(ctx, t);
-    }
-
-    // 工人
+    // 工人激光 (在工人之前画激光线)
     for (const w of this.workers) {
-      this.drawWorker(ctx, w);
+      if (w.targetResource && this.resourceCache.has(w.targetResource.key)) {
+        const res = this.resourceCache.get(w.targetResource.key);
+        this.drawWorkerLaser(ctx, w, res);
+      }
     }
 
-    // 敌人
-    for (const e of this.enemies) {
-      this.drawEnemy(ctx, e);
-    }
+    for (const w of this.workers) this.drawWorker(ctx, w);
+    for (const e of this.enemies) this.drawEnemy(ctx, e);
 
-    // 弹丸
-    for (const p of this.projectiles) {
-      ctx.fillStyle = '#ffff00';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-      ctx.fill();
+    // 塔攻击激光脉冲
+    for (const t of this.towers) {
+      if (t.beamT > 0) {
+        t.beamT -= 1 / 60;
+        if (t.beamTarget && t.beamTarget.alive) {
+          ctx.strokeStyle = 'rgba(120,240,255,' + Math.max(0, t.beamT / 0.12) + ')';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(t.x, t.y);
+          ctx.lineTo(t.beamTarget.x, t.beamTarget.y);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,' + Math.max(0, t.beamT / 0.12) + ')';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
     }
 
     // 拖拽线
@@ -575,22 +583,70 @@ export class EndlessGame {
 
       if (canPlace && this.buildMode === 'tower') {
         ctx.fillStyle = 'rgba(0,240,255,0.2)';
-        ctx.beginPath();
-        ctx.arc(hx, hy, TILE * 0.35, 0, Math.PI * 2);
+        drawPolygon(ctx, hx, hy, TILE * 0.35, 6);
         ctx.fill();
       }
     }
 
     ctx.restore();
 
-    // 夜间叠加暗色
     if (this.isNight) {
       ctx.fillStyle = 'rgba(5, 5, 20, 0.35)';
       ctx.fillRect(0, 0, w, h);
     }
 
-    // 小地图
     this.drawMinimap(ctx, w, h);
+  }
+
+  drawResource(ctx, cx, cy, type, hp, maxHp, shakeT) {
+    const shake = shakeT > 0 ? (Math.random() - 0.5) * 4 : 0;
+    const sx = cx + shake;
+    const sy = cy + shake;
+
+    if (type === TREE) {
+      // 树干 (小矩形) + 树冠 (大三角形=多边形 3边)
+      const dayColor = RES_INFO[TREE].colorDay;
+      const nightColor = RES_INFO[TREE].colorNight;
+      // 树干
+      ctx.fillStyle = this.isNight ? '#3a2a1a' : '#6a4a24';
+      ctx.fillRect(sx - 3, sy + TILE * 0.05, 6, TILE * 0.3);
+      // 树冠 (三角形 叠加一个稍大的三角形)
+      ctx.fillStyle = this.isNight ? nightColor : dayColor;
+      drawPolygon(ctx, sx, sy - TILE * 0.1, TILE * 0.32, 3, -Math.PI / 2);
+      ctx.fill();
+      ctx.fillStyle = this.isNight ? '#2a4a1a' : '#4a7a2a';
+      drawPolygon(ctx, sx, sy - TILE * 0.15, TILE * 0.18, 3, -Math.PI / 2);
+      ctx.fill();
+    } else if (type === ROCK) {
+      // 岩石: 五边形
+      ctx.fillStyle = this.isNight ? '#3a3a3a' : '#8a8a8a';
+      drawPolygon(ctx, sx, sy, TILE * 0.35, 5, Math.PI * 0.1);
+      ctx.fill();
+      // 内层高光
+      ctx.fillStyle = this.isNight ? '#5a5a5a' : '#aaaaaa';
+      drawPolygon(ctx, sx - 2, sy - 3, TILE * 0.18, 5, Math.PI * 0.1);
+      ctx.fill();
+    } else if (type === GOLD) {
+      // 金矿: 八边形 + 中心小菱形
+      ctx.fillStyle = this.isNight ? '#6a5a00' : '#ffd700';
+      drawPolygon(ctx, sx, sy, TILE * 0.3, 8, Math.PI / 8);
+      ctx.fill();
+      ctx.fillStyle = this.isNight ? '#8a7a00' : '#ffee44';
+      drawDiamond(ctx, sx, sy, TILE * 0.12, TILE * 0.08);
+      ctx.fill();
+    }
+
+    // HP 条 (只在被采集时显示)
+    if (hp < maxHp - 0.01) {
+      const ratio = Math.max(0, hp / maxHp);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(cx - TILE * 0.35, cy - TILE * 0.45, TILE * 0.7, 4);
+      let barColor = '#00ff44';
+      if (type === GOLD) barColor = '#ffcc00';
+      if (type === ROCK) barColor = '#cccccc';
+      ctx.fillStyle = barColor;
+      ctx.fillRect(cx - TILE * 0.35, cy - TILE * 0.45, TILE * 0.7 * ratio, 4);
+    }
   }
 
   drawBase(ctx) {
@@ -598,42 +654,55 @@ export class EndlessGame {
     const by = BASE_Y * TILE;
     const r = this.baseRadius * TILE;
 
-    // 基地地面
+    // 基地地面(八边形)
     ctx.fillStyle = this.isNight ? '#1a2a0a' : '#2a4a18';
-    ctx.beginPath();
-    ctx.arc(bx, by, r, 0, Math.PI * 2);
+    drawPolygon(ctx, bx, by, r, 8);
     ctx.fill();
 
-    // 基地建筑
+    // 基地建筑 (大正方形叠加小菱形)
     ctx.fillStyle = this.isNight ? '#3a3a4a' : '#5a5a7a';
-    ctx.fillRect(bx - TILE * 0.6, by - TILE * 0.6, TILE * 1.2, TILE * 1.2);
-    ctx.fillStyle = this.isNight ? '#4a4a5a' : '#7a7a9a';
-    ctx.fillRect(bx - TILE * 0.3, by - TILE * 0.3, TILE * 0.6, TILE * 0.6);
+    drawPolygon(ctx, bx, by, TILE * 0.7, 4, Math.PI / 4);
+    ctx.fill();
+    ctx.fillStyle = this.isNight ? '#4a4a5a' : '#8a8aaa';
+    drawDiamond(ctx, bx, by, TILE * 0.4, TILE * 0.3);
+    ctx.fill();
 
     // 血条
     const hpRatio = this.baseHP / this.baseMaxHP;
     ctx.fillStyle = '#333';
-    ctx.fillRect(bx - TILE * 0.5, by - TILE * 0.8, TILE, 4);
+    ctx.fillRect(bx - TILE * 0.6, by - TILE * 0.9, TILE * 1.2, 5);
     ctx.fillStyle = hpRatio > 0.5 ? '#00ff44' : hpRatio > 0.25 ? '#ffaa00' : '#ff3333';
-    ctx.fillRect(bx - TILE * 0.5, by - TILE * 0.8, TILE * hpRatio, 4);
+    ctx.fillRect(bx - TILE * 0.6, by - TILE * 0.9, TILE * 1.2 * hpRatio, 5);
   }
 
   drawWall(ctx, wall) {
+    // 围墙: 正方形带边框
     ctx.fillStyle = this.isNight ? '#4a4a3a' : '#8a8a6a';
-    ctx.fillRect(wall.x - TILE * 0.4, wall.y - TILE * 0.4, TILE * 0.8, TILE * 0.8);
-    ctx.strokeStyle = this.isNight ? '#3a3a2a' : '#6a6a4a';
+    drawPolygon(ctx, wall.x, wall.y, TILE * 0.4, 4, Math.PI / 4);
+    ctx.fill();
+    ctx.strokeStyle = this.isNight ? '#2a2a1a' : '#5a5a3a';
     ctx.lineWidth = 2;
-    ctx.strokeRect(wall.x - TILE * 0.4, wall.y - TILE * 0.4, TILE * 0.8, TILE * 0.8);
+    drawPolygon(ctx, wall.x, wall.y, TILE * 0.4, 4, Math.PI / 4);
+    ctx.stroke();
+    // 内部分隔
+    ctx.strokeStyle = this.isNight ? '#2a2a1a' : '#5a5a3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(wall.x - TILE * 0.25, wall.y);
+    ctx.lineTo(wall.x + TILE * 0.25, wall.y);
+    ctx.stroke();
+
     // 血条
     const hpR = wall.hp / wall.maxHp;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(wall.x - TILE * 0.3, wall.y - TILE * 0.5, TILE * 0.6, 3);
-    ctx.fillStyle = hpR > 0.5 ? '#0f0' : '#f80';
-    ctx.fillRect(wall.x - TILE * 0.3, wall.y - TILE * 0.5, TILE * 0.6 * hpR, 3);
+    if (hpR < 1) {
+      ctx.fillStyle = '#333';
+      ctx.fillRect(wall.x - TILE * 0.3, wall.y - TILE * 0.5, TILE * 0.6, 3);
+      ctx.fillStyle = hpR > 0.5 ? '#0f0' : '#f80';
+      ctx.fillRect(wall.x - TILE * 0.3, wall.y - TILE * 0.5, TILE * 0.6 * hpR, 3);
+    }
   }
 
   drawTower(ctx, t) {
-    // 射程圈
     if (t === this.selectedUnit) {
       ctx.strokeStyle = 'rgba(0,240,255,0.2)';
       ctx.lineWidth = 1;
@@ -641,67 +710,102 @@ export class EndlessGame {
       ctx.arc(t.x, t.y, t.range * TILE, 0, Math.PI * 2);
       ctx.stroke();
     }
-    // 塔身
-    ctx.fillStyle = '#00aadd';
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, TILE * 0.35, 0, Math.PI * 2);
+    // 六边形塔基
+    ctx.fillStyle = this.isNight ? '#003a4a' : '#007a9a';
+    drawPolygon(ctx, t.x, t.y, TILE * 0.38, 6);
     ctx.fill();
-    ctx.fillStyle = '#00ddff';
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, TILE * 0.2, 0, Math.PI * 2);
+    // 内部小六边形
+    ctx.fillStyle = this.isNight ? '#006a8a' : '#00ddff';
+    drawPolygon(ctx, t.x, t.y, TILE * 0.22, 6);
     ctx.fill();
-    // 炮管
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(t.x, t.y);
-    ctx.lineTo(t.x + TILE * 0.35, t.y - TILE * 0.15);
-    ctx.stroke();
+    // 顶部菱形核心
+    ctx.fillStyle = '#ffffff';
+    drawDiamond(ctx, t.x, t.y, TILE * 0.08, TILE * 0.12);
+    ctx.fill();
   }
 
   drawWorker(ctx, w) {
-    ctx.fillStyle = '#44aaff';
-    ctx.beginPath();
-    ctx.arc(w.x, w.y, TILE * 0.3, 0, Math.PI * 2);
+    // 工人: 菱形体
+    ctx.fillStyle = this.isNight ? '#225588' : '#44aaff';
+    drawDiamond(ctx, w.x, w.y, TILE * 0.22, TILE * 0.32);
     ctx.fill();
-    ctx.fillStyle = '#88ccff';
-    ctx.beginPath();
-    ctx.arc(w.x, w.y, TILE * 0.18, 0, Math.PI * 2);
+    // 内部亮菱形
+    ctx.fillStyle = this.isNight ? '#6699cc' : '#aaddff';
+    drawDiamond(ctx, w.x, w.y, TILE * 0.12, TILE * 0.18);
     ctx.fill();
-    // 状态指示
-    if (w.gathering) {
-      ctx.fillStyle = '#ffd700';
-      ctx.beginPath();
-      ctx.arc(w.x, w.y - TILE * 0.4, 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // 中心小圆点
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawWorkerLaser(ctx, w, res) {
+    // 激光效果: 多层线条
+    const t = performance.now() / 100;
+    const flicker = 0.7 + Math.sin(t) * 0.3;
+
+    // 外层光晕
+    ctx.strokeStyle = 'rgba(100,200,255,' + (0.25 * flicker) + ')';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(w.x, w.y);
+    ctx.lineTo(res.x, res.y);
+    ctx.stroke();
+
+    // 中层
+    ctx.strokeStyle = 'rgba(180,230,255,' + (0.6 * flicker) + ')';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // 核心白亮线
+    ctx.strokeStyle = 'rgba(255,255,255,' + flicker + ')';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 端点发光
+    ctx.fillStyle = 'rgba(180,230,255,' + flicker + ')';
+    ctx.beginPath();
+    ctx.arc(res.x, res.y, TILE * 0.1 + Math.sin(t * 2) * 3, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   drawEnemy(ctx, e) {
+    // 旋转
+    e.rot += (e.rotSpeed || 0) * 0.016;
+
     const colors = ['#ff4444', '#ff8800', '#ff00aa', '#aa00ff'];
     const color = colors[Math.min(e.tier - 1, colors.length - 1)];
-
-    ctx.fillStyle = color;
-    ctx.beginPath();
     const size = TILE * 0.3 + e.tier * 2;
-    // 快速绘制三角形怪物
-    ctx.moveTo(e.x, e.y - size);
-    ctx.lineTo(e.x + size, e.y + size * 0.7);
-    ctx.lineTo(e.x - size, e.y + size * 0.7);
-    ctx.closePath();
+
+    // tier 1: 三角形, tier 2: 五边形, tier 3: 七边形, tier 4+: 星形
+    ctx.fillStyle = color;
+    if (e.tier >= 4) {
+      drawStar(ctx, e.x, e.y, size, size * 0.5, 5, e.rot);
+    } else {
+      const sides = 3 + (e.tier - 1) * 2; // 3, 5, 7
+      drawPolygon(ctx, e.x, e.y, size, sides, e.rot);
+    }
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath();
-    ctx.arc(e.x, e.y + size * 0.2, size * 0.5, 0, Math.PI * 2);
+    // 内层暗
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    if (e.tier >= 4) {
+      drawStar(ctx, e.x, e.y, size * 0.55, size * 0.25, 5, e.rot);
+    } else {
+      const sides = 3 + (e.tier - 1) * 2;
+      drawPolygon(ctx, e.x, e.y, size * 0.55, sides, e.rot);
+    }
     ctx.fill();
 
     // 血条
     const hpR = e.hp / e.maxHp;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(e.x - TILE * 0.25, e.y - size - 5, TILE * 0.5, 3);
-    ctx.fillStyle = '#ff3333';
-    ctx.fillRect(e.x - TILE * 0.25, e.y - size - 5, TILE * 0.5 * hpR, 3);
+    if (hpR < 1) {
+      ctx.fillStyle = '#333';
+      ctx.fillRect(e.x - TILE * 0.25, e.y - size - 6, TILE * 0.5, 3);
+      ctx.fillStyle = '#ff3333';
+      ctx.fillRect(e.x - TILE * 0.25, e.y - size - 6, TILE * 0.5 * hpR, 3);
+    }
   }
 
   drawMinimap(ctx, w, h) {
@@ -723,6 +827,10 @@ export class EndlessGame {
     ctx.fillStyle = '#00aadd';
     for (const t of this.towers) {
       ctx.fillRect(mmX + t.x * scale - 1, mmY + t.y * scale - 1, 2, 2);
+    }
+    ctx.fillStyle = '#44aaff';
+    for (const w2 of this.workers) {
+      ctx.fillRect(mmX + w2.x * scale - 1, mmY + w2.y * scale - 1, 2, 2);
     }
     ctx.fillStyle = '#ff4444';
     for (const e of this.enemies) {
@@ -770,10 +878,15 @@ export class EndlessGame {
   findResourceAt(wx, wy) {
     const cell = this.worldToCell(wx, wy);
     const key = `${cell.x},${cell.y}`;
-    if (this.resourceCache.has(key)) return null;
+    const cached = this.resourceCache.get(key);
+    // 如果缓存中存在且有 hp，则返回它；否则检查地形
+    if (cached && cached.hp > 0) {
+      return { key, x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2, type: cached.type, fromCache: true };
+    }
+    if (cached) return null; // 被采集但已死亡
     const terrain = getTerrain(cell.x, cell.y);
     if (terrain === TREE || terrain === ROCK || terrain === GOLD) {
-      return { key, x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2, type: terrain };
+      return { key, x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2, type: terrain, fromCache: false };
     }
     return null;
   }
@@ -783,7 +896,6 @@ export class EndlessGame {
     const unit = this.findUnitAt(world.x, world.y);
 
     if (unit && (this.towers.includes(unit) || this.workers.includes(unit))) {
-      // 开始拖拽单位
       this.dragUnit = unit;
       this.dragUnitLine = null;
       this.selectedUnit = unit;
@@ -797,7 +909,6 @@ export class EndlessGame {
       return;
     }
 
-    // 无单位，开始拖拽地图
     this.dragging = true;
     this.dragStartX = sx;
     this.dragStartY = sy;
@@ -812,7 +923,6 @@ export class EndlessGame {
     const world = this.screenToWorld(sx, sy);
 
     if (this.dragUnit) {
-      // 拖拽单位到资源
       const resource = this.findResourceAt(world.x, world.y);
       if (resource) {
         this.dragUnitLine = { x: resource.x, y: resource.y };
@@ -828,7 +938,6 @@ export class EndlessGame {
       return;
     }
 
-    // 建造模式悬停
     if (this.buildMode) {
       this.hoverCell = this.worldToCell(world.x, world.y);
     }
@@ -839,14 +948,25 @@ export class EndlessGame {
       const world = this.screenToWorld(sx, sy);
       const resource = this.findResourceAt(world.x, world.y);
       if (resource) {
-        // 指定单位去采集
         const unit = this.dragUnit;
         if (this.workers.includes(unit)) {
           unit.targetX = resource.x;
           unit.targetY = resource.y;
-          unit.targetResource = resource;
-          unit.gathering = false;
-          this.resourceCache.set(resource.key, true);
+          // 建立资源 HP 缓存
+          if (!resource.fromCache) {
+            const info = RES_INFO[resource.type];
+            this.resourceCache.set(resource.key, {
+              key: resource.key,
+              type: resource.type,
+              x: resource.x,
+              y: resource.y,
+              hp: info.hp,
+              maxHp: info.hp,
+              shakeT: 0
+            });
+          }
+          const cached = this.resourceCache.get(resource.key);
+          unit.targetResource = cached;
         }
       }
       this.dragUnit = null;
@@ -878,6 +998,8 @@ export class EndlessGame {
         damage: 10,
         fireRate: 0.8,
         fireTimer: 0,
+        beamT: 0,
+        beamTarget: null,
         alive: true
       });
     } else if (this.buildMode === 'wall') {
@@ -885,8 +1007,7 @@ export class EndlessGame {
       this.wood -= 10;
       this.walls.push({
         x: wx, y: wy,
-        hp: 50,
-        maxHp: 50,
+        hp: 50, maxHp: 50,
         alive: true
       });
     } else if (this.buildMode === 'worker') {
@@ -896,8 +1017,6 @@ export class EndlessGame {
         x: wx, y: wy,
         targetX: wx, targetY: wy,
         targetResource: null,
-        gathering: false,
-        gatherTimer: 0,
         alive: true
       });
     }
@@ -911,7 +1030,6 @@ export class EndlessGame {
     this.dragUnitLine = null;
   }
 
-  // ===== HUD =====
   updateHUD() {
     if (this.onHUDUpdate) {
       this.onHUDUpdate({
