@@ -100,12 +100,13 @@ export class EndlessGame {
     this.clock = new THREE.Clock();
     this.animId = null;
 
-    // 相机控制（鼠标右键拖拽 / 滚轮缩放）
+    // 相机控制（右键平移 / 中键旋转 / 滚轮缩放
     this.camAngle = Math.PI / 4;
     this.camHeight = 18;
     this.camDist = 22;
     this.camTarget = new THREE.Vector3(0, 0, 0);
     this.isPanning = false;
+    this.isRotating = false;
     this.lastMouseX = 0;
     this.lastMouseY = 0;
 
@@ -483,7 +484,22 @@ export class EndlessGame {
     this.baseMaxHp = 100;
 
     this.createMap();
+
+    // 重置相机状态并显示渲染器（处理"退出后再进入"的场景
+    this.camAngle = Math.PI / 4;
+    this.camHeight = 18;
+    this.camDist = 22;
+    this.camTarget.set(0, 0, 0);
     this.updateCamera();
+
+    if (this.renderer && this.renderer.domElement) {
+      this.renderer.domElement.style.display = 'block';
+      // 重新设置画布尺寸以适配当前窗口
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+    }
+
     this.updateHUD();
     if (!this.animId) this.animate();
   }
@@ -527,6 +543,11 @@ export class EndlessGame {
   stop() {
     if (this.animId) cancelAnimationFrame(this.animId);
     this.animId = null;
+    this.running = false;
+    // 强制隐藏渲染器 dom，防止在主页残留
+    if (this.renderer && this.renderer.domElement) {
+      this.renderer.domElement.style.display = 'none';
+    }
   }
 
   cleanup() {
@@ -982,6 +1003,14 @@ export class EndlessGame {
       return;
     }
 
+    // 中键 -> 旋转视角
+    if (e.button === 1) {
+      this.isRotating = true;
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+      return;
+    }
+
     // 若处于建造模式，检查点击的格子标记
     if (this.buildMode && ['arrow','cannon','ice','lightning','wall','worker'].includes(this.buildMode)) {
       const intersects = this.raycaster.intersectObjects(this.markers, false);
@@ -1061,18 +1090,26 @@ export class EndlessGame {
     if (this.isPanning) {
       const dx = e.clientX - this.lastMouseX;
       const dy = e.clientY - this.lastMouseY;
-      // 以当前相机角度计算右方向和前方向（都在 XZ 平面）
       const camAng = this.camAngle;
-      // right = 相机右方向（单位向量，XZ 平面）
       const rx = Math.sin(camAng);
       const rz = -Math.cos(camAng);
-      // forward = 相机看向目标的方向（XZ 平面）
       const fx = -Math.cos(camAng);
       const fz = -Math.sin(camAng);
-      // 每像素对应世界单位距离（受相机距离影响）
       const panFactor = this.camDist * 0.004;
       this.camTarget.x += (-rx * dx + fx * dy) * panFactor;
       this.camTarget.z += (-rz * dx + fz * dy) * panFactor;
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+      this.updateCamera();
+      return;
+    }
+    if (this.isRotating) {
+      const dx = e.clientX - this.lastMouseX;
+      const dy = e.clientY - this.lastMouseY;
+      // 水平移动：改变相机水平角度
+      this.camAngle += dx * 0.008;
+      // 垂直移动：改变相机高度（向上拖降低视角/更俯视/更矮）
+      this.camHeight = Math.max(6, Math.min(45, this.camHeight + dy * 0.08));
       this.lastMouseX = e.clientX;
       this.lastMouseY = e.clientY;
       this.updateCamera();
@@ -1082,6 +1119,7 @@ export class EndlessGame {
 
   onMouseUp(e) {
     this.isPanning = false;
+    this.isRotating = false;
   }
 
   onWheel(e) {

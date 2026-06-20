@@ -138,6 +138,8 @@ export class UIManager {
     this.pageLevels.classList.add('hidden');
     this.pageUpgrade.classList.add('hidden');
     this.pageGame.classList.add('hidden');
+    const endless = document.getElementById('page-endless');
+    if (endless) endless.classList.add('hidden');
   }
 
   showLevelsPage() {
@@ -145,6 +147,8 @@ export class UIManager {
     this.pageLevels.classList.remove('hidden');
     this.pageUpgrade.classList.add('hidden');
     this.pageGame.classList.add('hidden');
+    const endless = document.getElementById('page-endless');
+    if (endless) endless.classList.add('hidden');
   }
 
   showUpgradePage() {
@@ -152,6 +156,8 @@ export class UIManager {
     this.pageLevels.classList.add('hidden');
     this.pageUpgrade.classList.remove('hidden');
     this.pageGame.classList.add('hidden');
+    const endless = document.getElementById('page-endless');
+    if (endless) endless.classList.add('hidden');
   }
 
   showGamePage() {
@@ -161,6 +167,8 @@ export class UIManager {
     this.pageGame.classList.remove('hidden');
     document.getElementById('hud').classList.remove('hidden');
     this.towerPanel.classList.remove('hidden');
+    const endless = document.getElementById('page-endless');
+    if (endless) endless.classList.add('hidden');
   }
 
   // ===== 主页金币 =====
