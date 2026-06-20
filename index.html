@@ -10,90 +10,132 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 3D 画布容器 -->
-  <div id="game-container"></div>
 
-  <!-- 顶部 HUD -->
-  <div id="hud" class="hidden">
-    <div class="hud-item">
-      <span class="hud-label">生命</span>
-      <span class="hud-value" id="hud-lives">20</span>
-    </div>
-    <div class="hud-item">
-      <span class="hud-label">金币</span>
-      <span class="hud-value gold" id="hud-gold">200</span>
-    </div>
-    <div class="hud-item">
-      <span class="hud-label">波次</span>
-      <span class="hud-value" id="hud-wave">0/10</span>
-    </div>
-    <div class="hud-item">
-      <span class="hud-label">得分</span>
-      <span class="hud-value" id="hud-score">0</span>
-    </div>
-    <div class="hud-item">
-      <span class="hud-label">状态</span>
-      <span class="hud-value status" id="hud-status">准备</span>
-    </div>
+  <!-- ==================== 主页 ==================== -->
+  <div id="page-home">
+    <!-- 顶部导航 -->
+    <header class="home-header">
+      <h1 class="home-title">几何体塔防</h1>
+      <p class="home-subtitle">GEOMETRIC TOWER DEFENSE</p>
+    </header>
+
+    <main class="home-main">
+      <!-- 关卡选择 -->
+      <section class="section">
+        <h2 class="section-title">选择关卡</h2>
+        <p class="section-desc">完成关卡解锁下一关，获取更多星星评价</p>
+        <div id="level-grid" class="level-grid"></div>
+      </section>
+
+      <!-- 塔图鉴 -->
+      <section class="section">
+        <h2 class="section-title">防御塔图鉴</h2>
+        <p class="section-desc">四种防御塔，各有特色，可以升级到 Lv.3</p>
+        <div id="tower-gallery" class="tower-gallery"></div>
+      </section>
+
+      <!-- 操作说明 -->
+      <section class="section">
+        <h2 class="section-title">操作说明</h2>
+        <div class="controls-grid">
+          <div class="control-item">
+            <span class="control-key">🖱 左键</span>
+            <span class="control-desc">放置塔 / 点击已有塔升级</span>
+          </div>
+          <div class="control-item">
+            <span class="control-key">🖱 右键</span>
+            <span class="control-desc">取消选择 / 关闭面板</span>
+          </div>
+          <div class="control-item">
+            <span class="control-key">🖱 滚轮</span>
+            <span class="control-desc">缩放视角</span>
+          </div>
+          <div class="control-item">
+            <span class="control-key">🖱 右键拖拽</span>
+            <span class="control-desc">旋转视角</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="home-footer">
+      <p>Retro-Futuristic Arcade Style &copy; 2026</p>
+    </footer>
   </div>
 
-  <!-- 底部塔选择面板 -->
-  <div id="tower-panel" class="hidden"></div>
+  <!-- ==================== 游戏页面 ==================== -->
+  <div id="page-game" class="hidden">
+    <!-- 3D 画布 -->
+    <div id="game-container"></div>
 
-  <!-- 开始波次按钮 -->
-  <button id="btn-start-wave" class="wave-btn hidden">开始下一波</button>
-
-  <!-- 主菜单 -->
-  <div id="menu-overlay" class="overlay">
-    <div class="overlay-content">
-      <h1 class="game-title">几何体塔防</h1>
-      <p class="game-subtitle">GEOMETRIC TOWER DEFENSE</p>
-      <div class="menu-shapes">
-        <div class="menu-shape box"></div>
-        <div class="menu-shape cone"></div>
-        <div class="menu-shape sphere"></div>
-        <div class="menu-shape pyramid"></div>
+    <!-- 顶部 HUD -->
+    <div id="hud" class="hidden">
+      <button id="btn-back-home" class="back-btn" title="返回主页">🏠</button>
+      <div class="hud-item">
+        <span class="hud-label" id="hud-level-name">关卡</span>
       </div>
-      <p class="game-desc">选择防御塔，放置在网格上，抵御几何体怪物的进攻！</p>
-      <button id="btn-start" class="action-btn">开始游戏</button>
-      <div class="controls-hint">
-        <p>🖱 左键点击格子放置塔 | 🖱 右键取消选择</p>
-        <p>🖱 滚轮缩放 | 🖱 右键拖动旋转视角</p>
+      <div class="hud-item">
+        <span class="hud-label">生命</span>
+        <span class="hud-value" id="hud-lives">20</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">金币</span>
+        <span class="hud-value gold" id="hud-gold">200</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">波次</span>
+        <span class="hud-value" id="hud-wave">0/10</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">得分</span>
+        <span class="hud-value" id="hud-score">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">状态</span>
+        <span class="hud-value status" id="hud-status">准备</span>
       </div>
     </div>
-  </div>
 
-  <!-- 游戏结束 -->
-  <div id="gameover-overlay" class="overlay hidden">
-    <div class="overlay-content">
-      <h1 class="result-title fail">游戏结束</h1>
-      <p class="result-subtitle">GAME OVER</p>
-      <div class="result-stats">
-        <div class="stat">
-          <span class="stat-label">最终得分</span>
-          <span class="stat-value" id="gameover-score">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">到达波次</span>
-          <span class="stat-value" id="gameover-wave">0</span>
-        </div>
+    <!-- 底部塔选择面板 -->
+    <div id="tower-panel" class="hidden"></div>
+
+    <!-- 开始波次按钮 -->
+    <button id="btn-start-wave" class="wave-btn hidden">开始下一波</button>
+
+    <!-- 升级面板 -->
+    <div id="upgrade-panel" class="upgrade-panel hidden">
+      <div class="upgrade-header">
+        <span id="upgrade-name">箭塔</span>
+        <span id="upgrade-level">Lv.1</span>
       </div>
-      <button id="btn-restart" class="action-btn">再来一局</button>
+      <div id="upgrade-stats" class="upgrade-stats"></div>
+      <div class="upgrade-actions">
+        <button id="btn-upgrade" class="btn-upgrade">升级 <span id="upgrade-cost">💰60</span></button>
+        <button id="btn-sell" class="btn-sell">出售 💰</button>
+      </div>
     </div>
-  </div>
 
-  <!-- 胜利 -->
-  <div id="victory-overlay" class="overlay hidden">
-    <div class="overlay-content">
-      <h1 class="result-title win">胜利！</h1>
-      <p class="result-subtitle">VICTORY</p>
-      <div class="result-stats">
-        <div class="stat">
-          <span class="stat-label">最终得分</span>
-          <span class="stat-value" id="victory-score">0</span>
+    <!-- 游戏结束/胜利覆盖层 -->
+    <div id="game-overlay" class="game-overlay hidden">
+      <div class="overlay-content">
+        <h1 id="overlay-title" class="overlay-title">胜利！</h1>
+        <p id="overlay-subtitle" class="overlay-subtitle">VICTORY</p>
+        <div class="overlay-stats">
+          <div class="ostat">
+            <span class="ostat-label">得分</span>
+            <span class="ostat-value" id="overlay-score">0</span>
+          </div>
+          <div class="ostat" id="overlay-wave-container">
+            <span class="ostat-label">波次</span>
+            <span class="ostat-value" id="overlay-wave">0</span>
+          </div>
+        </div>
+        <div id="overlay-stars" class="overlay-stars"></div>
+        <div class="overlay-buttons">
+          <button id="overlay-btn" class="action-btn">重新挑战</button>
+          <button id="overlay-next-btn" class="action-btn secondary">下一关</button>
         </div>
       </div>
-      <button id="btn-restart2" class="action-btn">再来一局</button>
     </div>
   </div>
 

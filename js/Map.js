@@ -1,18 +1,13 @@
 import * as THREE from 'three';
 
 export class Map {
-  constructor(scene) {
+  constructor(scene, levelConfig) {
     this.scene = scene;
-    this.cols = 10;
-    this.rows = 10;
+    this.cols = levelConfig.cols;
+    this.rows = levelConfig.rows;
     this.cellSize = 1;
-
-    // 路径网格坐标 (col, row)
-    this.pathCells = [
-      [0, 0], [0, 3], [3, 3], [3, 0], [5, 0],
-      [5, 3], [8, 3], [8, 0], [9, 0], [9, 5],
-      [5, 5], [5, 7], [9, 7], [9, 9]
-    ];
+    this.theme = levelConfig.theme;
+    this.pathCells = levelConfig.pathCells;
 
     // 计算世界坐标路径
     this.path = this.pathCells.map(([col, row]) => ({
@@ -20,9 +15,10 @@ export class Map {
       z: this.rowToWorld(row)
     }));
 
-    // 可放置塔的格子 (不在路径上的格子)
+    // 可放置塔的格子
     this.placeableCells = this.computePlaceableCells();
 
+    this.createGround();
     this.createGrid();
     this.createPathVisual();
     this.createPlaceableMarkers();
@@ -57,35 +53,34 @@ export class Map {
     return placeable;
   }
 
-  createGrid() {
-    // 地面
-    const groundGeo = new THREE.PlaneGeometry(this.cols, this.rows);
+  createGround() {
+    const groundGeo = new THREE.PlaneGeometry(this.cols + 0.5, this.rows + 0.5);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x111122,
+      color: this.theme.bg,
       roughness: 0.9,
       metalness: 0.1
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.01;
+    ground.position.y = -0.02;
     ground.receiveShadow = true;
     this.scene.add(ground);
+  }
 
-    // 网格线
+  createGrid() {
     const gridHelper = new THREE.PolarGridHelper(
-      Math.max(this.cols, this.rows) / 2,
+      Math.max(this.cols, this.rows) / 2 + 1,
       32,
-      this.cols,
+      Math.max(this.cols, this.rows),
       64,
-      0x222244,
-      0x222244
+      this.theme.grid,
+      this.theme.grid
     );
     gridHelper.position.y = 0.01;
     this.scene.add(gridHelper);
   }
 
   createPathVisual() {
-    // 路径发光面
     for (let i = 0; i < this.path.length - 1; i++) {
       const from = this.path[i];
       const to = this.path[i + 1];
@@ -98,8 +93,8 @@ export class Map {
 
       const pathGeo = new THREE.PlaneGeometry(0.6, length);
       const pathMat = new THREE.MeshStandardMaterial({
-        color: 0x334466,
-        emissive: 0x112233,
+        color: this.theme.path,
+        emissive: new THREE.Color(this.theme.path).multiplyScalar(0.5),
         emissiveIntensity: 0.5,
         roughness: 0.5,
         transparent: true,
@@ -113,13 +108,13 @@ export class Map {
       this.scene.add(pathSeg);
     }
 
-    // 路径起点和终点标记
-    this.createMarker(this.path[0], 0x00ff88, '起点');
-    this.createMarker(this.path[this.path.length - 1], 0xff3333, '终点');
+    // 起点和终点标记
+    this.createMarker(this.path[0], 0x00ff88);
+    this.createMarker(this.path[this.path.length - 1], 0xff3333);
   }
 
-  createMarker(pos, color, label) {
-    const geo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
+  createMarker(pos, color) {
+    const geo = new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16);
     const mat = new THREE.MeshStandardMaterial({
       color: color,
       emissive: color,

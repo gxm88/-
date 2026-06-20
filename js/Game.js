@@ -3,12 +3,19 @@ import { SceneManager } from './Scene.js';
 import { Map } from './Map.js';
 import { Tower, TOWER_CONFIGS } from './Tower.js';
 import { Enemy } from './Enemy.js';
-import { WaveManager, TOTAL_WAVES } from './Wave.js';
-import { UIManager } from './UI.js';
+import { WaveManager } from './Wave.js';
+import { getLevel, getStars } from './LevelData.js';
 
 export class Game {
-  constructor() {
-    this.state = 'menu'; // menu | playing | gameover | victory
+  constructor(sceneManager, uiManager) {
+    this.sceneManager = sceneManager;
+    this.scene = sceneManager.getScene();
+    this.camera = sceneManager.getCamera();
+    this.renderer = sceneManager.getRenderer();
+    this.ui = uiManager;
+
+    this.state = 'idle'; // idle | playing | gameover | victory
+    this.levelConfig = null;
     this.lives = 20;
     this.gold = 200;
     this.score = 0;
@@ -17,91 +24,86 @@ export class Game {
     this.enemies = [];
     this.projectiles = [];
     this.placementPreview = null;
-    this.hoveredCell = null;
+    this.selectedTowerType = null;
+    this.selectedTower = null; // 点击已放置的塔选中
 
-    this.sceneManager = new SceneManager(document.getElementById('game-container'));
-    this.scene = this.sceneManager.getScene();
-    this.camera = this.sceneManager.getCamera();
-    this.renderer = this.sceneManager.getRenderer();
-
-    this.map = new Map(this.scene);
+    this.map = null;
     this.waveManager = new WaveManager();
-    this.ui = new UIManager();
-
-    this.setupUIEvents();
-    this.setupRaycaster();
-
-    this.clock = new THREE.Clock();
-    this.lastTime = 0;
-
-    this.ui.showMenu();
-    this.animate();
-  }
-
-  setupUIEvents() {
-    this.ui.onStart = () => this.startGame();
-    this.ui.onRestart = () => this.restartGame();
-    this.ui.onStartWave = () => this.startNextWave();
-  }
-
-  setupRaycaster() {
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = 30;
     this.mouse = new THREE.Vector2();
 
+    this.clock = new THREE.Clock();
+    this.animFrameId = null;
+
+    this.setupInputEvents();
+    this.animate();
+  }
+
+  setupInputEvents() {
     this.renderer.domElement.addEventListener('click', (e) => this.onClick(e));
     this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
     this.renderer.domElement.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      this.ui.clearSelection();
-      this.removePlacementPreview();
+      this.clearAllSelections();
     });
   }
 
-  startGame() {
-    this.state = 'playing';
-    this.lives = 20;
-    this.gold = 200;
+  loadLevel(levelId) {
+    this.levelConfig = getLevel(levelId);
+    this.state = 'idle';
+    this.lives = this.levelConfig.startLives;
+    this.gold = this.levelConfig.startGold;
     this.score = 0;
     this.currentWave = 0;
     this.clearAll();
-    this.ui.hideMenu();
-    this.ui.updateHUD(this.lives, this.gold, this.score, 0, TOTAL_WAVES, '准备');
-    this.ui.showWaveButton(true);
-  }
+    this.selectedTowerType = null;
+    this.selectedTower = null;
+    this.removePlacementPreview();
 
-  restartGame() {
-    this.clearAll();
-    this.startGame();
+    this.map = new Map(this.scene, this.levelConfig);
+    this.waveManager.loadLevel(this.levelConfig.waveDefs);
+
+    this.ui.updateHUD(this.lives, this.gold, this.score, 0, this.waveManager.totalWaves, '准备');
+    this.ui.showWaveButton(true);
+    this.ui.hideUpgradePanel();
+    this.ui.hideGameOverlay();
+
+    // 重启动画循环
+    if (!this.animFrameId) {
+      this.animate();
+    }
   }
 
   clearAll() {
     this.towers.forEach(t => t.remove());
     this.enemies.forEach(e => e.remove());
-    this.projectiles.forEach(p => p.remove());
+    this.projectiles.forEach(p => {
+      if (p.mesh.parent) this.scene.remove(p.mesh);
+      p.remove();
+    });
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
     this.currentWave = 0;
-    this.waveManager = new WaveManager();
   }
 
   startNextWave() {
-    if (this.state !== 'playing') return;
+    if (this.state !== 'idle' && this.state !== 'playing') return;
+    this.state = 'playing';
     this.currentWave++;
     this.waveManager.startWave(this.currentWave - 1);
     this.ui.showWaveButton(false);
-    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, TOTAL_WAVES, '战斗中');
+    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves, '战斗中');
+    this.ui.hideUpgradePanel();
   }
 
-  // 射线检测获取鼠标下的格子
   getGridCell(event) {
+    if (!this.map) return null;
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.map.markers);
-
     if (intersects.length > 0) {
       const obj = intersects[0].object;
       if (obj.userData.col !== undefined) {
@@ -111,45 +113,97 @@ export class Game {
     return null;
   }
 
+  getTowerAtCell(cell) {
+    return this.towers.find(t => t.gridPos.col === cell.col && t.gridPos.row === cell.row);
+  }
+
   onClick(event) {
-    if (this.state !== 'playing') return;
+    if (this.state !== 'playing' && this.state !== 'idle') return;
+    if (!this.map) return;
 
     const cell = this.getGridCell(event);
     if (!cell) {
-      this.ui.clearSelection();
-      this.removePlacementPreview();
+      this.clearAllSelections();
       return;
     }
 
-    const selectedType = this.ui.selectedTower;
-    if (!selectedType) return;
+    // 检查是否点击了已有塔
+    const existingTower = this.getTowerAtCell(cell);
+    if (existingTower) {
+      this.selectPlacedTower(existingTower);
+      return;
+    }
 
-    const config = TOWER_CONFIGS[selectedType];
+    // 放置新塔
+    if (this.selectedTowerType) {
+      this.placeTower(cell);
+    }
+  }
+
+  selectPlacedTower(tower) {
+    this.selectedTowerType = null;
+    this.selectedTower = tower;
+    this.removePlacementPreview();
+    this.ui.clearTowerSelection();
+    this.ui.showUpgradePanel(tower, this.gold);
+    tower.showRange(true);
+  }
+
+  placeTower(cell) {
+    const config = TOWER_CONFIGS[this.selectedTowerType];
     if (!config) return;
-
-    // 检查金币
     if (this.gold < config.cost) return;
+    if (this.getTowerAtCell(cell)) return;
 
-    // 检查是否已有塔
-    const existing = this.towers.find(t => t.gridPos.col === cell.col && t.gridPos.row === cell.row);
-    if (existing) return;
-
-    // 放置塔
     const worldPos = this.map.getWorldPos(cell.col, cell.row);
     const tower = new Tower(config, cell, worldPos, this.scene);
     this.towers.push(tower);
     this.gold -= config.cost;
-    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, TOTAL_WAVES, '战斗中');
-    this.ui.clearSelection();
+    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves,
+      this.state === 'playing' ? '战斗中' : '准备');
+    this.clearAllSelections();
+  }
+
+  upgradeTower() {
+    if (!this.selectedTower) return;
+    const cost = this.selectedTower.getUpgradeCost();
+    if (cost <= 0 || this.gold < cost) return;
+    this.gold -= cost;
+    this.selectedTower.upgrade();
+    this.ui.showUpgradePanel(this.selectedTower, this.gold);
+    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves,
+      this.state === 'playing' ? '战斗中' : '准备');
+  }
+
+  sellTower() {
+    if (!this.selectedTower) return;
+    const refund = Math.floor(this.selectedTower.config.cost * 0.5);
+    this.gold += refund;
+    this.selectedTower.remove();
+    this.towers = this.towers.filter(t => t !== this.selectedTower);
+    this.selectedTower = null;
+    this.ui.hideUpgradePanel();
+    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves,
+      this.state === 'playing' ? '战斗中' : '准备');
+  }
+
+  clearAllSelections() {
+    if (this.selectedTower) {
+      this.selectedTower.showRange(false);
+      this.selectedTower = null;
+    }
+    this.selectedTowerType = null;
     this.removePlacementPreview();
+    this.ui.clearTowerSelection();
+    this.ui.hideUpgradePanel();
   }
 
   onMouseMove(event) {
-    if (this.state !== 'playing') return;
-    const cell = this.getGridCell(event);
-    this.hoveredCell = cell;
+    if (this.state !== 'playing' && this.state !== 'idle') return;
+    if (!this.map) return;
 
-    if (this.ui.selectedTower && cell) {
+    const cell = this.getGridCell(event);
+    if (this.selectedTowerType && cell) {
       this.showPlacementPreview(cell);
     } else {
       this.removePlacementPreview();
@@ -158,16 +212,16 @@ export class Game {
 
   showPlacementPreview(cell) {
     this.removePlacementPreview();
-
-    const config = TOWER_CONFIGS[this.ui.selectedTower];
+    const config = TOWER_CONFIGS[this.selectedTowerType];
     if (!config) return;
 
     const worldPos = this.map.getWorldPos(cell.col, cell.row);
-    const existing = this.towers.find(t => t.gridPos.col === cell.col && t.gridPos.row === cell.row);
+    const existing = this.getTowerAtCell(cell);
+    const canPlace = !existing && this.gold >= config.cost;
 
     const geo = new THREE.RingGeometry(config.range - 0.05, config.range, 64);
     const mat = new THREE.MeshBasicMaterial({
-      color: existing ? 0xff3333 : (this.gold >= config.cost ? 0x00ff88 : 0xff3333),
+      color: canPlace ? 0x00ff88 : 0xff3333,
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.3
@@ -192,22 +246,22 @@ export class Game {
 
     // 波次管理
     if (this.waveManager.waveActive) {
-      const newEnemyConfigs = this.waveManager.getSpawns(delta, this.map.getPath(), this.scene);
+      const newEnemyConfigs = this.waveManager.getSpawns(delta);
       for (const config of newEnemyConfigs) {
         const enemy = new Enemy(config, this.map.getPath(), this.scene);
         this.enemies.push(enemy);
       }
 
-      // 检查波次完成
       if (this.waveManager.isWaveComplete(this.enemies)) {
         this.waveManager.waveActive = false;
-        if (this.currentWave >= TOTAL_WAVES) {
+        if (this.currentWave >= this.waveManager.totalWaves) {
           this.state = 'victory';
-          this.ui.showVictory(this.score);
+          const stars = getStars(this.lives, this.levelConfig.startLives);
+          this.ui.showVictory(this.score, stars);
           return;
         }
         this.ui.showWaveButton(true);
-        this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, TOTAL_WAVES, '波次完成');
+        this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves, '波次完成');
       }
     }
 
@@ -216,7 +270,7 @@ export class Game {
       enemy.update(delta);
       if (enemy.reachedEnd) {
         this.lives--;
-        this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, TOTAL_WAVES, '战斗中');
+        this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves, '战斗中');
         if (this.lives <= 0) {
           this.state = 'gameover';
           this.ui.showGameOver(this.score, this.currentWave);
@@ -225,7 +279,7 @@ export class Game {
       }
     }
 
-    // 清理死亡/到达终点的敌人
+    // 清理敌人
     for (const enemy of this.enemies) {
       if (!enemy.alive) {
         if (enemy.hp <= 0 && !enemy.reachedEnd) {
@@ -243,38 +297,33 @@ export class Game {
     }
 
     // 更新弹丸
-    for (const proj of this.projectiles) {
-      if (proj.alive) {
-        proj.update(delta);
-      }
-    }
-    // 清理弹丸并添加到场景/移除
     const newProjectiles = [];
     for (const proj of this.projectiles) {
       if (proj.alive) {
-        if (!proj.mesh.parent) {
-          this.scene.add(proj.mesh);
-        }
+        if (!proj.mesh.parent) this.scene.add(proj.mesh);
+        proj.update(delta);
         newProjectiles.push(proj);
       } else {
-        if (proj.mesh.parent) {
-          this.scene.remove(proj.mesh);
-        }
+        if (proj.mesh.parent) this.scene.remove(proj.mesh);
         proj.remove();
       }
     }
     this.projectiles = newProjectiles;
 
-    // 更新 HUD
-    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, TOTAL_WAVES,
-      this.waveManager.waveActive ? '战斗中' : '准备');
+    this.ui.updateHUD(this.lives, this.gold, this.score, this.currentWave, this.waveManager.totalWaves, '战斗中');
   }
 
   animate() {
-    requestAnimationFrame(() => this.animate());
-
+    this.animFrameId = requestAnimationFrame(() => this.animate());
     const delta = Math.min(this.clock.getDelta(), 0.1);
     this.update(delta);
     this.sceneManager.render();
+  }
+
+  cleanup() {
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+    }
+    this.clearAll();
   }
 }

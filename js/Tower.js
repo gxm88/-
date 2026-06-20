@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // 防御塔配置
 export const TOWER_CONFIGS = {
   arrow: {
-    type: '箭塔',
+    type: 'arrow',
     name: '箭塔',
     geometry: 'cone',
     color: 0x00f0ff,
@@ -11,7 +11,10 @@ export const TOWER_CONFIGS = {
     damage: 25,
     fireRate: 1.0,
     cost: 50,
-    description: '基础塔，攻速快'
+    description: '基础塔，攻速快，性价比高',
+    upgradeCosts: [0, 60, 120],
+    upgradeDamage: [25, 35, 50],
+    upgradeRange: [2.5, 2.7, 3.0]
   },
   cannon: {
     type: 'cannon',
@@ -22,7 +25,10 @@ export const TOWER_CONFIGS = {
     damage: 60,
     fireRate: 0.5,
     cost: 100,
-    description: '高伤害，射速慢'
+    description: '高伤害，范围小，适合集火',
+    upgradeCosts: [0, 100, 200],
+    upgradeDamage: [60, 90, 130],
+    upgradeRange: [2.0, 2.2, 2.5]
   },
   ice: {
     type: 'ice',
@@ -33,7 +39,10 @@ export const TOWER_CONFIGS = {
     damage: 15,
     fireRate: 1.2,
     cost: 75,
-    description: '减速敌人，攻速快'
+    description: '减速敌人50%，持续1秒',
+    upgradeCosts: [0, 80, 150],
+    upgradeDamage: [15, 22, 32],
+    upgradeRange: [2.2, 2.5, 2.8]
   },
   lightning: {
     type: 'lightning',
@@ -44,7 +53,10 @@ export const TOWER_CONFIGS = {
     damage: 40,
     fireRate: 0.8,
     cost: 150,
-    description: '大范围，中等伤害'
+    description: '大范围索敌，适合布防要道',
+    upgradeCosts: [0, 130, 250],
+    upgradeDamage: [40, 60, 85],
+    upgradeRange: [3.0, 3.3, 3.8]
   }
 };
 
@@ -53,11 +65,18 @@ export const TOWER_LIST = ['arrow', 'cannon', 'ice', 'lightning'];
 export class Tower {
   constructor(config, gridPos, worldPos, scene) {
     this.config = config;
-    this.gridPos = gridPos; // {col, row}
-    this.worldPos = worldPos; // {x, z}
+    this.gridPos = gridPos;
+    this.worldPos = worldPos;
     this.scene = scene;
     this.fireTimer = 0;
     this.target = null;
+    this.level = 1;
+    this.maxLevel = 3;
+
+    // 当前属性
+    this.damage = config.upgradeDamage[0];
+    this.range = config.upgradeRange[0];
+    this.fireRate = config.fireRate;
 
     this.mesh = this.createMesh();
     this.rangeRing = this.createRangeRing();
@@ -71,21 +90,22 @@ export class Tower {
   createMesh() {
     const { geometry, color } = this.config;
     let geo;
+    const size = 0.45 + this.level * 0.08;
     switch (geometry) {
       case 'cone':
-        geo = new THREE.ConeGeometry(0.45, 0.9, 8);
+        geo = new THREE.ConeGeometry(size, size * 2, 8);
         break;
       case 'box':
-        geo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+        geo = new THREE.BoxGeometry(size * 1.5, size * 1.5, size * 1.5);
         break;
       case 'octahedron':
-        geo = new THREE.OctahedronGeometry(0.45);
+        geo = new THREE.OctahedronGeometry(size);
         break;
       case 'dodecahedron':
-        geo = new THREE.DodecahedronGeometry(0.45);
+        geo = new THREE.DodecahedronGeometry(size);
         break;
       default:
-        geo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+        geo = new THREE.BoxGeometry(size * 1.5, size * 1.5, size * 1.5);
     }
 
     const mat = new THREE.MeshStandardMaterial({
@@ -96,13 +116,13 @@ export class Tower {
       metalness: 0.5
     });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = 0.5;
+    mesh.position.y = 0.5 + this.level * 0.1;
     mesh.castShadow = true;
     return mesh;
   }
 
   createRangeRing() {
-    const geo = new THREE.RingGeometry(this.config.range - 0.05, this.config.range, 64);
+    const geo = new THREE.RingGeometry(this.range - 0.05, this.range, 64);
     const mat = new THREE.MeshBasicMaterial({
       color: this.config.color,
       side: THREE.DoubleSide,
@@ -112,6 +132,36 @@ export class Tower {
     const ring = new THREE.Mesh(geo, mat);
     ring.rotation.x = -Math.PI / 2;
     return ring;
+  }
+
+  upgrade() {
+    if (this.level >= this.maxLevel) return false;
+    this.level++;
+    this.damage = this.config.upgradeDamage[this.level - 1];
+    this.range = this.config.upgradeRange[this.level - 1];
+
+    // 更新模型
+    this.scene.remove(this.mesh);
+    this.mesh.geometry?.dispose();
+    this.mesh.material?.dispose();
+    this.mesh = this.createMesh();
+    this.mesh.position.set(this.worldPos.x, 0, this.worldPos.z);
+    this.scene.add(this.mesh);
+
+    // 更新范围环
+    this.scene.remove(this.rangeRing);
+    this.rangeRing.geometry?.dispose();
+    this.rangeRing.material?.dispose();
+    this.rangeRing = this.createRangeRing();
+    this.rangeRing.position.set(this.worldPos.x, 0.01, this.worldPos.z);
+    this.scene.add(this.rangeRing);
+
+    return true;
+  }
+
+  getUpgradeCost() {
+    if (this.level >= this.maxLevel) return 0;
+    return this.config.upgradeCosts[this.level];
   }
 
   showRange(visible) {
@@ -127,7 +177,7 @@ export class Tower {
       const dx = enemy.mesh.position.x - this.worldPos.x;
       const dz = enemy.mesh.position.z - this.worldPos.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist <= this.config.range && dist < closestDist) {
+      if (dist <= this.range && dist < closestDist) {
         closestDist = dist;
         closest = enemy;
       }
@@ -137,17 +187,16 @@ export class Tower {
 
   update(delta, enemies, projectiles) {
     this.fireTimer += delta;
-
-    // Find target
     this.target = this.findTarget(enemies);
 
-    if (this.target && this.fireTimer >= 1 / this.config.fireRate) {
+    if (this.target && this.fireTimer >= 1 / this.fireRate) {
       this.fireTimer = 0;
       this.fire(this.target, projectiles);
-      // Attack animation
-      this.mesh.scale.set(1.2, 0.8, 1.2);
+      // 攻击动画
+      const s = 1 + this.level * 0.05;
+      this.mesh.scale.set(s + 0.2, s - 0.2, s + 0.2);
       setTimeout(() => {
-        if (this.mesh) this.mesh.scale.set(1, 1, 1);
+        if (this.mesh) this.mesh.scale.set(s, s, s);
       }, 100);
     }
   }
@@ -155,10 +204,10 @@ export class Tower {
   fire(target, projectiles) {
     const startPos = {
       x: this.worldPos.x,
-      y: 0.8,
+      y: 0.8 + this.level * 0.1,
       z: this.worldPos.z
     };
-    projectiles.push(new Projectile(startPos, target, this.config.damage, this.config.color, this.config.type));
+    projectiles.push(new Projectile(startPos, target, this.damage, this.config.color, this.config.type));
   }
 
   remove() {
@@ -204,12 +253,15 @@ export class Projectile {
 
     if (dist < 0.3) {
       this.target.takeDamage(this.damage);
-      // Slow effect for ice tower
       if (this.towerType === 'ice') {
         this.target.speed = this.target.config.speed * 0.5;
+        this.target.mesh.material.emissive.set(0x66ccff);
+        this.target.mesh.material.emissiveIntensity = 0.8;
         setTimeout(() => {
           if (this.target && this.target.alive) {
             this.target.speed = this.target.config.speed;
+            this.target.mesh.material.emissive.set(this.target.config.color);
+            this.target.mesh.material.emissiveIntensity = 0.6;
           }
         }, 1000);
       }
