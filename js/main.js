@@ -242,44 +242,48 @@ class App {
       this.navigateToHome();
     });
 
-    // 底部面板按钮（短按=切换选中，长按拖拽=放置到地图
+    // 底部面板按钮（短按=切换选中，长按=拖拽放置到地图）
     const panelBtns = document.querySelectorAll('#endless-panel .endless-panel-btn');
-    const DRAG_THRESHOLD = 8;
-    const LONG_PRESS_MS = 200;
+    const DRAG_THRESHOLD = 4;
+    const LONG_PRESS_MS = 180;
     panelBtns.forEach(btn => {
       let dragging = false;
       let pressTimer = null;
       let startX = 0, startY = 0;
-      let moved = false;
 
       const clearPress = () => {
         if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
       };
 
+      const startDrag = (clientX, clientY) => {
+        dragging = true;
+        this.endlessBuildMode = null;
+        panelBtns.forEach(b => b.classList.remove('selected'));
+        this.endlessGame.setBuildMode(null);
+        this.endlessGame.startDragBuild(btn.dataset.action);
+        this.endlessGame.updateDragBuild(clientX, clientY);
+      };
+
       btn.addEventListener('pointerdown', (e) => {
-        const action = btn.dataset.action;
         dragging = false;
-        moved = false;
         startX = e.clientX;
         startY = e.clientY;
-        // 短按时不立即进入 build 模式，等 mouseup 决定
-        // 但是进入长按启动拖拽放置
+        // 长按定时器：180ms后进入拖拽模式
         pressTimer = setTimeout(() => {
           if (this.endlessGame._dragBuildMode != null) return;
-          dragging = true;
-          this.endlessBuildMode = null;
-          panelBtns.forEach(b => b.classList.remove('selected'));
-          this.endlessGame.setBuildMode(null);
-          this.endlessGame.startDragBuild(action);
+          startDrag(e.clientX, e.clientY);
         }, LONG_PRESS_MS);
       });
 
       btn.addEventListener('pointermove', (e) => {
-        if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > DRAG_THRESHOLD) {
-          moved = true;
-        }
         if (dragging) {
           this.endlessGame.updateDragBuild(e.clientX, e.clientY);
+          return;
+        }
+        // 移动超过阈值也立即进入拖拽
+        if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > DRAG_THRESHOLD) {
+          clearPress();
+          startDrag(e.clientX, e.clientY);
         }
       });
 
@@ -289,7 +293,7 @@ class App {
           dragging = false;
           this.endlessGame.endDragBuild(e.clientX, e.clientY);
         } else {
-          // 短按=切换建造模式（原逻辑）
+          // 短按=切换建造模式
           const action = btn.dataset.action;
           if (this.endlessBuildMode === action) {
             this.endlessBuildMode = null;
@@ -304,11 +308,6 @@ class App {
       };
       btn.addEventListener('pointerup', onUp);
       btn.addEventListener('pointercancel', onUp);
-      btn.addEventListener('pointerleave', (e) => {
-        if (dragging) {
-          // 移出按钮时继续跟踪全局 move/up（通过全局监听已在上面绑定）
-        }
-      });
     });
 
     // 全局鼠标移动/释放用于拖拽放置跟随鼠标（即使离开按钮）

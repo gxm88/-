@@ -1411,6 +1411,8 @@ export class EndlessGame {
   // 开始拖拽放置（用于从底部按钮长按后调用）
   startDragBuild(type) {
     this._dragBuildMode = type;
+    // 添加拖拽样式
+    if (this.container) this.container.classList.add('drag-building');
     // 显示所有可建造标记
     for (const m of this.markers) m.visible = true;
     // 创建幽灵预览
@@ -1509,6 +1511,7 @@ export class EndlessGame {
 
   _cleanupDragBuild() {
     this._dragBuildMode = null;
+    if (this.container) this.container.classList.remove('drag-building');
     if (this._dragBuildGhost) {
       this.scene.remove(this._dragBuildGhost);
       this._dragBuildGhost.traverse(o => {
