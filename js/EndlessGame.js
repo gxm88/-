@@ -109,6 +109,12 @@ export class EndlessGame {
     this.isRotating = false;
     this.lastMouseX = 0;
     this.lastMouseY = 0;
+    // 双指手势状态（触屏）
+    this._activePointers = new Map(); // pointerId -> {x, y}
+    this._gestureCenterX = 0;
+    this._gestureCenterY = 0;
+    this._gestureAngle = 0;
+    this._gestureDist = 0;
 
     this.towers = [];
     this.walls = [];
@@ -1057,31 +1063,124 @@ export class EndlessGame {
     dom.addEventListener('wheel', (e) => { e.preventDefault(); this.onWheel(e); }, { passive: false });
     dom.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // 触摸支持
-    dom.addEventListener('touchstart', (e) => {
+    // ==== 触屏：Pointer Events（统一处理手指和鼠标） ====
+    dom.addEventListener('pointerdown', (e) => {
+      // 触屏指针（pointerType === 'touch'）走这里；鼠标事件用 mousedown 处理
+      if (e.pointerType !== 'touch') return;
       e.preventDefault();
-      if (e.touches.length === 1) {
-        const t = e.touches[0];
-        this.onMouseDown({ clientX: t.clientX, clientY: t.clientY, button: 0 });
+      this._activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (this._activePointers.size === 1) {
+        // 单指：走左键逻辑（点击/长按拖拽工人/放置塔）
+        this.onMouseDown({ clientX: e.clientX, clientY: e.clientY, button: 0, _fromPointer: true });
+      } else if (this._activePointers.size === 2) {
+        // 双指：进入手势模式（平移+旋转+缩放）
+        // 先取消单指的按压状态
+        this.onMouseUp({ clientX: e.clientX, clientY: e.clientY, button: 0, _suppressClick: true });
+        const pts = Array.from(this._activePointers.values());
+        this._gestureCenterX = (pts[0].x + pts[1].x) / 2;
+        this._gestureCenterY = (pts[0].y + pts[1].y) / 2;
+        const dx = pts[1].x - pts[0].x;
+        const dy = pts[1].y - pts[0].y;
+        this._gestureAngle = Math.atan2(dy, dx);
+        this._gestureDist = Math.hypot(dx, dy);
+        this.isPanning = true; // 借用平移标记，但在 move 中走手势逻辑
       }
     });
-    dom.addEventListener('touchmove', (e) => {
+
+    dom.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'touch') return;
+      if (!this._activePointers.has(e.pointerId)) return;
       e.preventDefault();
-      if (e.touches.length === 1) {
-        const t = e.touches[0];
-        this.onMouseMove({ clientX: t.clientX, clientY: t.clientY, button: 0 });
+      // 更新当前指针位置
+      this._activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (this._activePointers.size === 1) {
+        // 单指移动：走 onMouseMove（拖拽工人/高亮等）
+        this.onMouseMove({ clientX: e.clientX, clientY: e.clientY, button: 0 });
+      } else if (this._activePointers.size === 2) {
+        // 双指：手势（平移 + 旋转 + 缩放）
+        const pts = Array.from(this._activePointers.values());
+        const newCenterX = (pts[0].x + pts[1].x) / 2;
+        const newCenterY = (pts[0].y + pts[1].y) / 2;
+        const dx = pts[1].x - pts[0].x;
+        const dy = pts[1].y - pts[0].y;
+        const newAngle = Math.atan2(dy, dx);
+        const newDist = Math.hypot(dx, dy);
+
+        // 1) 中心变化 → 平移视角
+        const cdx = newCenterX - this._gestureCenterX;
+        const cdy = newCenterY - this._gestureCenterY;
+        if (Math.abs(cdx) + Math.abs(cdy) > 0.5) {
+          const camAng = this.camAngle;
+          const rx = Math.sin(camAng), rz = -Math.cos(camAng);
+          const fx = -Math.cos(camAng), fz = -Math.sin(camAng);
+          const panFactor = this.camDist * 0.004;
+          this.camTarget.x += (-rx * cdx + fx * cdy) * panFactor;
+          this.camTarget.z += (-rz * cdx + fz * cdy) * panFactor;
+        }
+
+        // 2) 角度变化 → 旋转 camAngle
+        let dAngle = newAngle - this._gestureAngle;
+        // 归一化到 [-π, π]
+        while (dAngle > Math.PI) dAngle -= 2 * Math.PI;
+        while (dAngle < -Math.PI) dAngle += 2 * Math.PI;
+        if (Math.abs(dAngle) > 0.01) {
+          this.camAngle -= dAngle; // 反向旋转匹配直观手指旋转方向
+        }
+
+        // 3) 距离变化 → 缩放 camDist
+        if (newDist > 0 && this._gestureDist > 0) {
+          const scale = this._gestureDist / newDist;
+          this.camDist = Math.max(8, Math.min(55, this.camDist * scale));
+        }
+
+        this._gestureCenterX = newCenterX;
+        this._gestureCenterY = newCenterY;
+        this._gestureAngle = newAngle;
+        this._gestureDist = newDist;
+        this.updateCamera();
       }
     });
-    dom.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.onMouseUp({ clientX: 0, clientY: 0, button: 0 });
-    });
+
+    const _clearPointer = (e) => {
+      if (e.pointerType !== 'touch') return;
+      const wasTwo = this._activePointers.size >= 2;
+      const wasOne = this._activePointers.size === 1;
+      if (this._activePointers.has(e.pointerId)) {
+        this._activePointers.delete(e.pointerId);
+      }
+      if (this._activePointers.size === 0) {
+        // 所有手指抬起：触发 onMouseUp（如果之前是单指操作）
+        if (wasOne || wasTwo) {
+          this.isPanning = false;
+          this.isRotating = false;
+          if (wasOne) {
+            // 单指结束：用最后位置触发 onMouseUp
+            this.onMouseUp({ clientX: e.clientX, clientY: e.clientY, button: 0, _fromPointer: true });
+          }
+        }
+      } else if (this._activePointers.size === 1) {
+        // 从双指变单指：重置单指状态（不继续拖拽工人）
+        const [pt] = this._activePointers.values();
+        this.isPanning = false;
+        this.isRotating = false;
+        // 重新开始一次单指按下（以新位置为准）
+        this.onMouseDown({ clientX: pt.x, clientY: pt.y, button: 0, _fromPointer: true, _suppressDrag: true });
+      }
+    };
+    dom.addEventListener('pointerup', _clearPointer);
+    dom.addEventListener('pointercancel', _clearPointer);
+    dom.addEventListener('pointerleave', _clearPointer);
   }
 
   onMouseDown(e) {
     this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // 从双指变单指时：只处理射线和移动，不允许触发工人拖拽
+    const suppressDrag = !!e._suppressDrag;
 
     // 右键 -> 平移地图
     if (e.button === 2) {
@@ -1107,6 +1206,7 @@ export class EndlessGame {
     this.longPressMoved = false;
     this.pressMoved = false;
     this.pressedEntity = null;
+    this._suppressDrag = suppressDrag;
 
     // 建造模式：立即放置
     if (this.buildMode && ['arrow','cannon','ice','lightning','wall','worker'].includes(this.buildMode)) {
@@ -1176,8 +1276,8 @@ export class EndlessGame {
       return;
     }
 
-    // 拖拽工人：进入拖拽模式后，计算弧线目标
-    if (this.isDragging && this.pressedEntity && this.pressedEntity.kind === 'worker') {
+    // 拖拽工人：进入拖拽模式后，计算弧线目标（触屏上从双指变单指时禁止）
+    if (!this._suppressDrag && this.isDragging && this.pressedEntity && this.pressedEntity.kind === 'worker') {
       const groundHit = this.raycaster.intersectObjects(this.groundMeshes, false);
       const resHit = this.raycaster.intersectObjects(this.resources.map(r => r.mesh), true);
       let target = null;
@@ -1195,8 +1295,8 @@ export class EndlessGame {
       return;
     }
 
-    // 按下工人后移动鼠标 → 立即进入拖拽模式（不需要等 320ms）
-    if (this.isPressing && this.pressedEntity && this.pressedEntity.kind === 'worker') {
+    // 按下工人后移动鼠标 → 立即进入拖拽模式（触屏上从双指变单指时禁止）
+    if (!this._suppressDrag && this.isPressing && this.pressedEntity && this.pressedEntity.kind === 'worker') {
       const moved = Math.abs(e.clientX - this.pressStartX) + Math.abs(e.clientY - this.pressStartY);
       if (moved > 6) {
         this.isDragging = true;
@@ -1234,6 +1334,16 @@ export class EndlessGame {
     this.isPanning = false;
     this.isRotating = false;
 
+    // 双指开始时的抑制调用：不触发任何点击/拖拽行为
+    if (e._suppressClick) {
+      this.isPressing = false;
+      this.isDragging = false;
+      this.pressedEntity = null;
+      this.dragTarget = null;
+      this.pressMoved = false;
+      return;
+    }
+
     if (!this.isPressing) return;
     this.isPressing = false;
 
@@ -1266,6 +1376,7 @@ export class EndlessGame {
       this.hideEntityPanel();
     }
     this.pressedEntity = null;
+    this._suppressDrag = false;
   }
 
   // 从射线检测中判断点到了什么实体（工人优先，避免被塔/基地挡住）
