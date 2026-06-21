@@ -653,3 +653,187 @@
   border-radius: var(--r-10);
 }
 @keyframes sk { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ============================================================
+   Components · 响应式
+   ============================================================ */
+
+/* --- 移动端 (≤ 768px) --- */
+@media (max-width: 768px) {
+  /* Banner */
+  .banner {
+    height: 180px;
+    border-radius: var(--r-12);
+    margin-bottom: 20px;
+  }
+  .banner-slide { padding: 20px 18px; gap: 8px; }
+  .banner-title { font-size: 18px; }
+  .banner-sub { font-size: 12px; }
+  .banner-cta { padding: 8px 14px; font-size: 12px; }
+  .banner-dots { right: 14px; bottom: 12px; }
+
+  /* 卡片栅格（歌单/专辑）：最小 2 列 */
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .playlist-title { font-size: 12px; -webkit-line-clamp: 2; margin-top: 8px; }
+  .playlist-sub { font-size: 10px; }
+  .playlist-cover { border-radius: var(--r-10); }
+
+  /* 艺人栅格 */
+  .artist-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .artist-name { font-size: 12px; margin-top: 6px; }
+  .artist-sub { font-size: 10px; }
+
+  /* 歌曲列表（track-row）：
+     小屏只保留 序号/封面+标题/时长，隐藏 album/genre 等 */
+  .track-row {
+    grid-template-columns: 28px 1fr 60px;
+    gap: 10px;
+    padding: 10px 8px;
+  }
+  .track-row .track-col { display: none; }
+  .track-row .track-act { display: none; }
+  .track-cover-sm { width: 34px; height: 34px; }
+  .track-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-num { font-size: 12px; }
+  .track-dur { font-size: 11px; }
+
+  /* 个人中心：统计改为 2 列 */
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .stat-block { padding: 14px; }
+  .stat-num { font-size: 20px; }
+  .stat-label { font-size: 11px; }
+
+  /* 风格画像条 */
+  .pbc-row {
+    grid-template-columns: 60px 1fr 40px;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  /* Tabs：允许横向滚动 */
+  .col-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .col-tab { flex-shrink: 0; font-size: 11px; padding: 6px 12px; }
+
+  /* 过滤器 pill */
+  .filter-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .filter-pill { font-size: 11px; padding: 5px 10px; }
+
+  /* 歌单详情 Hero：改为竖向 */
+  .playlist-hero {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 18px 12px 20px;
+    align-items: start;
+  }
+  .playlist-hero .cover-lg {
+    width: 160px; height: 160px;
+    aspect-ratio: 1 / 1;
+  }
+  .ph-title { font-size: 22px; margin-top: 6px; }
+  .ph-sub { font-size: 12px; margin-top: 8px; }
+  .ph-meta { font-size: 11px; }
+  .ph-ctas { margin-top: 14px; flex-wrap: wrap; }
+
+  /* AI 卡片：改为竖向 */
+  .ai-card {
+    grid-template-columns: 1fr;
+    padding: 18px;
+    gap: 16px;
+  }
+  .ai-card-title { font-size: 18px; }
+  .ai-card-sub { font-size: 12px; }
+  .ai-card-visual { width: 100%; aspect-ratio: 2 / 1; }
+  .ai-pill-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ai-pill { flex-shrink: 0; }
+
+  /* AI 推荐中心 */
+  .ai-layout { grid-template-columns: 1fr; }
+
+  /* 文件夹视图 */
+  .folder-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .folder-item { padding: 10px; }
+  .folder-ic { width: 26px; height: 26px; font-size: 13px; }
+  .folder-name { font-size: 12px; }
+
+  /* 管理员后台 */
+  .admin-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .admin-stat { padding: 14px; }
+  .admin-stat .as-num { font-size: 18px; }
+
+  .admin-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .admin-side-menu {
+    display: flex;
+    overflow-x: auto;
+    padding: 6px;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+  .admin-side-menu .side-group-title { display: none; }
+  .admin-side-item {
+    flex-shrink: 0;
+    width: auto;
+    padding: 7px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .admin-panel { padding: 14px; }
+  .admin-panel h3 { font-size: 15px; margin-bottom: 10px; }
+
+  /* 表格：只保留 2 列，其他隐藏 */
+  .data-table { font-size: 12px; }
+  .data-table th:nth-child(n+3),
+  .data-table td:nth-child(n+3) { display: none; }
+  .data-table th, .data-table td { padding: 10px 8px; }
+
+  /* 表单项两列改一列 */
+  .two-col-form { grid-template-columns: 1fr; gap: 10px; }
+
+  /* 开关 */
+  .switch-row { padding: 10px 12px; }
+  .sw-label { font-size: 12px; }
+  .sw-sub { font-size: 11px; }
+
+  /* 扫描日志 */
+  .scan-log { font-size: 11px; padding: 12px 14px; }
+}
+
+/* --- 极小屏 (≤ 480px)：再压缩一级 --- */
+@media (max-width: 480px) {
+  .banner { height: 140px; }
+  .banner-title { font-size: 16px; }
+  .banner-sub { display: none; }
+  .artist-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-num { font-size: 18px; }
+  .ph-title { font-size: 20px; }
+}

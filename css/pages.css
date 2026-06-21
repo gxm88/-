@@ -122,3 +122,52 @@
 .scan-log .ok { color: var(--good); }
 .scan-log .warn { color: var(--warn); }
 .scan-log .dim { color: var(--text-dim); }
+
+/* ============================================================
+   Pages · 响应式
+   ============================================================ */
+@media (max-width: 768px) {
+  .page-intro-hero {
+    padding: 12px 4px 20px;
+    margin-bottom: 18px;
+  }
+  .page-intro-hero h2 { font-size: 18px; }
+  .page-intro-hero p { font-size: 12px; }
+
+  /* 个人中心头部 */
+  .profile-head {
+    grid-template-columns: 80px 1fr;
+    gap: 14px;
+    padding: 14px 4px 18px;
+    align-items: start;
+  }
+  .avatar-lg {
+    width: 80px; height: 80px;
+    font-size: 28px;
+  }
+  .profile-name { font-size: 18px; }
+  .profile-bio { font-size: 12px; margin-top: 4px; }
+  .profile-meta { font-size: 11px; margin-top: 8px; gap: 10px; }
+  .profile-ctas {
+    margin-top: 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .profile-ctas button {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  /* AI 推荐中心 */
+  .ai-layout { grid-template-columns: 1fr; }
+  .ai-model-row { grid-template-columns: 1fr; margin-top: 10px; }
+  .ai-model-card { padding: 12px; }
+
+  /* 管理员仪表盘 */
+  .admin-hero-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .admin-hero-row .admin-stat { padding: 14px; }
+}

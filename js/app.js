@@ -70,10 +70,17 @@ const App = (() => {
     const renderer = ROUTES[route] || ROUTES.home;
     container.innerHTML = renderer(payload);
 
-    // 导航激活
+    // 导航激活（侧栏 + 底部移动端 Tab）
     document.querySelectorAll(".side-item").forEach(el => el.classList.remove("is-active"));
     const navBtn = document.querySelector(`.side-item[data-goto="${route}"]`);
     if (navBtn) navBtn.classList.add("is-active");
+    // 移动端底部 Tab
+    document.querySelectorAll(".m-nav-item").forEach(el => el.classList.remove("is-active"));
+    const mobileRoute = route === "favorites" || route === "history" || route === "library" || route === "artists" || route === "albums" || route === "folders"
+      ? "profile"
+      : (route === "charts" ? "discover" : route);
+    const mBtn = document.querySelector(`.m-nav-item[data-goto="${mobileRoute}"]`);
+    if (mBtn) mBtn.classList.add("is-active");
 
     // 子页面：个人中心 tabs
     if (route === "profile" || route === "favorites" || route === "history") {

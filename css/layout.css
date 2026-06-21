@@ -152,15 +152,15 @@
 .app-shell {
   position: fixed; inset: 0;
   display: grid;
-  grid-template-rows: var(--topbar-h) 1fr var(--player-h);
+  /* 播放器改为 position: fixed，不占 grid 行，由 padding 预留空间 */
+  grid-template-rows: var(--topbar-h) 1fr;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--t-slow);
   background: var(--bg-0);
 }
 .app-shell.is-active {
-  opacity: 1; pointer-events: auto;
-}
+  opacity: 1; pointer-events: auto;}
 
 /* ---- 顶部栏 ---- */
 .topbar {
@@ -334,15 +334,17 @@
 }
 .section-more:hover { color: var(--accent); }
 
-/* ---- 底部播放器 ---- */
+/* ---- 底部播放器（固定在底部） ---- */
 .player-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
   display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr;
+  grid-template-columns: 1.1fr 1.4fr 1fr;
   align-items: center;
-  padding: 0 18px;
+  padding: 10px 18px;
   background: var(--bg-1);
   border-top: 1px solid var(--border);
-  position: relative;
+  z-index: 110;
 }
 .player-track { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .player-cover {
@@ -469,14 +471,198 @@
 .lyric-line { transition: color var(--t); }
 .lyric-line.is-current { color: var(--text-1); font-size: var(--fs-22); }
 
-/* ---- 响应式 ---- */
-@media (max-width: 960px) {
+/* ---- 通用显隐工具（默认显示；移动端才隐藏） ---- */
+.hide-mobile { display: inline-flex; }
+
+/* ============================================================
+   响应式 · 三档断点
+     · Tablet (≤ 1024px)  ·  Mobile (≤ 768px)  ·  Small (≤ 480px)
+   ============================================================ */
+
+/* ---------- 平板 / 窄桌面 ---------- */
+@media (max-width: 1024px) {
+  :root { --sidebar-w: 200px; }
+  .global-search { width: min(420px, 55vw); }
+}
+
+/* ---------- 移动端基础（竖屏 / 小屏平板） ---------- */
+@media (max-width: 768px) {
+  /* 登录页：隐藏 hero，让卡片占满 */
   .page-login { grid-template-columns: 1fr; }
   .login-hero { display: none; }
+  .login-form-wrap { padding: 24px; min-height: 100vh; }
+
+  /* 侧边栏在移动端彻底隐藏，由底部三 Tab 接管 */
   :root { --sidebar-w: 0px; }
   .sidebar { display: none; }
-  .page-body { padding: 20px; }
-  .player-bar { grid-template-columns: 1fr 1.2fr 1fr; }
-  .fullscreen-player { grid-template-columns: 1fr; padding: 40px 24px; gap: 24px; }
-  .fs-cover { width: 240px; height: 240px; }
+
+  /* === 顶部栏 === */
+  .topbar {
+    grid-template-columns: auto 1fr auto;
+    padding: 0 10px;
+    gap: 8px;
+    height: 56px;
+  }
+  .topbar-left .brand-text { display: none; } /* 小屏只保留圆点 */
+  .topbar-left .brand-dot { width: 22px; height: 22px; }
+
+  .global-search {
+    width: 100%;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .global-search input {
+    font-size: 14px;
+    min-width: 0;
+  }
+  .global-search kbd {
+    display: none; /* 移动端隐藏 Ctrl · K */
+  }
+  .topbar-right { gap: 6px; }
+  .hide-mobile { display: none !important; }
+  .avatar-trigger { padding: 4px; }
+  .avatar { width: 30px; height: 30px; font-size: 12px; }
+
+  /* === 内容区域 === */
+  .app-body { grid-template-columns: 1fr; }
+  .page-body {
+    padding: 18px 16px 220px;  /* 底部预留：播放器(78) + 三Tab(64) + 安全区 */
+  }
+  .page-title { font-size: 22px; }
+  .section-title { font-size: 16px; }
+
+  /* === 播放器（重点修复） === */
+  .player-bar {
+    grid-template-columns: 1fr auto;
+    padding: 10px 14px;
+    gap: 10px;
+    align-items: center;
+    position: fixed;
+    bottom: 64px;    /* 上方是播放器，下方是三 Tab */
+    left: 0; right: 0;
+    height: auto;
+  }
+  .player-track { min-width: 0; }
+  .player-cover { width: 42px; height: 42px; }
+  .player-title { font-size: 13px; }
+  .player-sub { font-size: 11px; }
+  /* 中间控制：仅保留 play/prev/next，隐藏其余；进度条改为 100% 占满整个下一行 */
+  .player-center {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+  .player-controls {
+    justify-content: center;
+    gap: 4px;
+  }
+  .player-controls .icon-btn:first-child,
+  .player-controls .icon-btn:last-child {
+    display: none;  /* 隐藏 shuffle / queue */
+  }
+  .player-progress {
+    width: 100%;
+    gap: 8px;
+  }
+  .player-progress .t {
+    font-size: 10px;
+    color: var(--text-3);
+    min-width: 30px;
+    text-align: center;
+  }
+  /* 右侧音量等：小屏隐藏 */
+  .player-right { display: none; }
+
+  /* === 底部三 Tab 导航（移动端专属） === */
+  .mobile-bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 64px;
+    background: var(--bg-1);
+    border-top: 1px solid var(--border);
+    z-index: 120;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .m-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-3);
+    background: transparent;
+    border: 0;
+    padding: 6px 4px;
+    transition: color var(--t-fast);
+  }
+  .m-nav-item svg { stroke: currentColor; }
+  .m-nav-item.is-active { color: var(--accent); }
+  .m-nav-item.is-active::before {
+    content: "";
+    display: block;
+    width: 24px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 999px;
+    margin-bottom: 4px;
+  }
+
+  /* === 全屏歌词播放器 === */
+  .fullscreen-player {
+    grid-template-columns: 1fr;
+    padding: 72px 24px 24px;
+    gap: 20px;
+    overflow-y: auto;
+  }
+  .fs-left {
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+  }
+  .fs-cover {
+    width: min(280px, 70vw);
+    height: min(280px, 70vw);
+  }
+  .fs-title { font-size: 20px; }
+  .fs-sub { font-size: 13px; margin-top: 4px; }
+  .fs-right { justify-content: center; max-height: 40vh; overflow-y: auto; }
+  .lyrics { font-size: 14px; line-height: 2; text-align: center; }
+  .lyric-line.is-current { font-size: 16px; }
+  .fs-close { top: 14px; right: 14px; font-size: 28px; }
+
+  /* === 队列浮层 === */
+  .queue-panel {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 48vh;
+  }
 }
+
+/* ---------- 极小屏（480 以下） ---------- */
+@media (max-width: 480px) {
+  .player-cover { width: 38px; height: 38px; }
+  .player-title { font-size: 12px; }
+  .play-btn { width: 34px; height: 34px; }
+  .fs-cover { width: 62vw; height: 62vw; }
+  .fs-title { font-size: 18px; }
+}
+
+/* ---------- 桌面：隐藏移动端底部三 Tab / 恢复播放器三列 ---------- */
+@media (min-width: 769px) {
+  .mobile-bottom-nav { display: none; }
+  .player-bar {
+    grid-template-columns: 1.1fr 1.4fr 1fr;
+    padding: 10px 18px;
+  }
+  /* 桌面端给内容底部留播放器高度 */
+  .page-body { padding-bottom: 110px; }
+}
+/* ============================================================
+   EOF
+   ============================================================ */
