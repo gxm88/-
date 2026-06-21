@@ -1,0 +1,875 @@
+/* ============================================================
+   页面模块：每个页面一个渲染函数，内容完全依赖 data.js
+   所有页面都输出到同一个 body 容器 (page-body)，
+   通过路由切换。所有的卡片 / 行 都挂载点击事件，
+   点击后使用 Player 播放该歌曲。
+   ============================================================ */
+
+const Pages = (() => {
+  const $ = (id) => document.getElementById(id);
+
+  // ---- helpers ----
+  function rowFor(track, i, { showNum = true, showLocal = false, isLocal = true } = {}) {
+    const [c1, c2] = colorOf(i);
+    return `
+      <div class="track-row" data-track="${track.id}">
+        <div class="track-num">
+          ${showNum ? `<span class="t-num">${String(i + 1).padStart(2, "0")}</span><span class="t-play">▶</span>` : ``}
+        </div>
+        <div class="track-info">
+          <div class="track-cover-sm" style="--c1:${c1};--c2:${c2}"></div>
+          <div class="track-meta">
+            <div class="track-name">${track.title}</div>
+            <div class="track-name-sub">${track.artist}</div>
+          </div>
+        </div>
+        <div class="track-col">${track.album}</div>
+        ${showLocal
+          ? `<div><span class="local-status ${isLocal ? "ok" : "no"}">${isLocal ? "✓ 已收录" : "✗ 本地暂无"}</span></div>`
+          : `<div class="track-col">${track.genre}</div>`}
+        <div class="track-dur">${fmtDur(track.dur)}</div>
+        <div class="track-act">
+          <button class="icon-btn" title="收藏">♡</button>
+        </div>
+      </div>`;
+  }
+
+  function playlistCard(p, i) {
+    const [c1, c2] = colorOf(i + 4);
+    const badge = p.type === "ai" ? `<span class="ai-badge">AI</span>` : (p.type === "official" ? `<span class="ai-badge" style="background:rgba(255,255,255,0.08);color:#fff">官方</span>` : "");
+    return `
+      <div class="playlist-card" data-playlist="${p.id}">
+        <div class="cover playlist-cover" style="--c1:${c1};--c2:${c2}">
+          ${badge}
+          <span class="play-hint">▶</span>
+        </div>
+        <div class="playlist-title">${p.title}</div>
+        <div class="playlist-sub">${p.tracks} 首 · ${p.duration}</div>
+      </div>`;
+  }
+
+  function albumCard(a, i) {
+    const [c1, c2] = colorOf(i + 1);
+    return `
+      <div class="playlist-card" data-album="${a.id}">
+        <div class="cover playlist-cover" style="--c1:${c1};--c2:${c2}">
+          <span class="play-hint">▶</span>
+        </div>
+        <div class="playlist-title">${a.title}</div>
+        <div class="playlist-sub">${a.artist} · ${a.year}</div>
+      </div>`;
+  }
+
+  function artistCard(ar, i) {
+    const [c1, c2] = colorOf(i + 7);
+    return `
+      <div class="artist-card" data-artist="${ar.id}">
+        <div class="artist-cover" style="--c1:${c1};--c2:${c2}"></div>
+        <div class="playlist-title" style="margin-top:14px">${ar.name}</div>
+        <div class="playlist-sub">${ar.tag} · ${ar.listeners} 听众</div>
+      </div>`;
+  }
+
+  function chartRow(c, i) {
+    const [c1, c2] = colorOf(i + 2);
+    return `
+      <div class="track-row chart-row">
+        <div class="track-num" style="font-size:15px;font-weight:700;color:${i < 3 ? '#9f7aea' : 'var(--text-2)'}">${c.rank}</div>
+        <div class="track-info">
+          <div class="track-cover-sm" style="--c1:${c1};--c2:${c2}"></div>
+          <div class="track-meta">
+            <div class="track-name">${c.title}</div>
+            <div class="track-name-sub">${c.artist}</div>
+          </div>
+        </div>
+        <div class="track-col">${c.streams} 次播放</div>
+        <div><span class="local-status ${c.local ? "ok" : "no"}">${c.local ? "✓ 已收录" : "✗ 本地暂无"}</span></div>
+        <div class="track-act">
+          ${c.local ? `<button class="icon-btn" title="播放">▶</button>` : `<button class="icon-btn" title="标记为想要">＋</button>`}
+        </div>
+      </div>`;
+  }
+
+  // ---- 页面：首页 ----
+  function home() {
+    return `
+      <section class="page-section">
+        <div class="banner" id="banner">
+          ${BANNERS.map((b, i) => `
+            <div class="banner-slide ${i === 0 ? "is-active" : ""}" style="--b-c1:${b.c1};--b-c2:${b.c2}">
+              <span class="banner-tag ${b.isAI ? "is-ai" : ""}">${b.tag}</span>
+              <div class="banner-title" style="margin-top:12px">${b.title}</div>
+              <div class="banner-sub">${b.sub}</div>
+              <button class="banner-cta" data-go-playlist="p0${i}">▶ 立即播放</button>
+            </div>`).join("")}
+          <div class="banner-dots" style="position:absolute;right:32px;bottom:24px">
+            ${BANNERS.map((_, i) => `<span class="banner-dot ${i === 0 ? "is-active" : ""}" data-banner-idx="${i}"></span>`).join("")}
+          </div>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-head">
+          <h3 class="section-title">今日 AI 推荐歌单</h3>
+          <button class="section-more" data-goto="ai">查看全部 AI 功能 →</button>
+        </div>
+        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+          ${pickN(PLAYLISTS.filter(p => p.type === "ai" || p.type === "official"), 4, 0).map(playlistCard).join("")}
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-head">
+          <h3 class="section-title">最近播放</h3>
+          <span class="section-more">${TRACKS.slice(0, 6).length} 首 · 已同步到 APP</span>
+        </div>
+        <div class="track-list">
+          ${pickN(TRACKS, 6, 2).map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-head">
+          <h3 class="section-title">新上架歌曲</h3>
+          <button class="section-more" data-goto="library">查看曲库 →</button>
+        </div>
+        <div class="track-list">
+          ${pickN(TRACKS, 6, 5).map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-head">
+          <h3 class="section-title">全网热榜预览</h3>
+          <button class="section-more" data-goto="charts">完整榜单 →</button>
+        </div>
+        <div class="track-list">
+          ${CHARTS.slice(0, 5).map(chartRow).join("")}
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="ai-card">
+          <div>
+            <div class="ph-type" style="color:var(--accent)">AI · 智能推荐中心</div>
+            <h3 class="ai-card-title" style="margin-top:8px">让 AI 为你做一张歌单</h3>
+            <p class="ai-card-sub">描述你想听的场景、情绪或用途，AI 会从你的本地曲库中匹配最合适的歌曲。</p>
+            <div class="ai-card-tags">
+              <span class="ai-card-tag">#深夜独酌</span>
+              <span class="ai-card-tag">#雨天专注</span>
+              <span class="ai-card-tag">#清晨咖啡</span>
+              <span class="ai-card-tag">#通勤低干扰</span>
+              <span class="ai-card-tag">#周末微醺摇滚</span>
+            </div>
+            <div style="margin-top:22px">
+              <button class="ai-card-cta" data-goto="ai">进入 AI 推荐中心 →</button>
+            </div>
+          </div>
+          <div class="ai-card-visual"></div>
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：发现 ----
+  function discover() {
+    return `
+      <section class="page-section">
+        <h3 class="section-title">全网热歌榜</h3>
+        <p class="section-more" style="margin-top:-22px;margin-bottom:14px">每首歌联动本地曲库 · 标注收录状态</p>
+        <div class="track-list">
+          ${CHARTS.slice(0, 12).map(chartRow).join("")}
+        </div>
+      </section>
+
+      <section class="page-section">
+        <h3 class="section-title">歌单广场</h3>
+        <div class="card-grid">
+          ${PLAYLISTS.map(playlistCard).join("")}
+        </div>
+      </section>
+
+      <section class="page-section">
+        <h3 class="section-title">全维度曲库浏览</h3>
+        <div class="filter-bar" style="flex-wrap:wrap">
+          ${["全部","风格 · 电子","风格 · 民谣","场景 · 专注","场景 · 运动","语种 · 中文","语种 · 英文"].map((f, i) =>
+            `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${f}</span>`).join("")}
+        </div>
+        <div class="track-list">
+          ${pickN(TRACKS, 8, 3).map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：AI 推荐中心 ----
+  function aiCenter() {
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero">
+          <div class="ph-type" style="color:var(--accent)">AI · 智能推荐中心</div>
+          <h2 style="margin-top:6px">用语言描述你想听的心情</h2>
+          <p>输入情绪、场景、关键词，AI 会从你的本地曲库挑选最合适的歌曲。所有推荐仅在本地计算。</p>
+        </div>
+
+        <div class="ai-layout">
+          <div class="admin-panel">
+            <h3>生成一张歌单</h3>
+            <div class="ai-input">
+              <textarea placeholder="例如：一个人在深夜的地铁里，有点疲惫，想听听慢一点、有氛围感的电子乐。"></textarea>
+            </div>
+            <div class="ai-pill-row">
+              <button class="ai-pill">🌧 下雨天 · 专注</button>
+              <button class="ai-pill">☕ 清晨 · 咖啡</button>
+              <button class="ai-pill">🌃 深夜 · 微醺</button>
+              <button class="ai-pill">🏃 跑步 · 中速节奏</button>
+              <button class="ai-pill">📚 低干扰 · 阅读</button>
+              <button class="ai-pill">🎮 游戏 · 合成器</button>
+            </div>
+            <div style="margin-top:20px">
+              <button class="ai-card-cta" id="btn-gen">⟐ 让 AI 生成歌单</button>
+              <button class="ph-ghost" style="margin-left:8px;padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">查看历史生成</button>
+            </div>
+          </div>
+
+          <div class="admin-panel">
+            <h3>你的听歌画像</h3>
+            <p style="font-size:var(--fs-12);color:var(--text-3);margin-bottom:14px">基于近 30 天 3284 分钟播放量，AI 自动分析。</p>
+            ${USER_PROFILE.top_genres.map(g => `
+              <div style="display:grid;grid-template-columns:80px 1fr 48px;gap:10px;align-items:center;margin-bottom:10px;font-size:var(--fs-13)">
+                <div>${g.name}</div>
+                <div class="bar" style="height:6px;background:var(--bg-3);border-radius:999px;overflow:hidden"><div style="height:100%;width:${g.pct * 3}%;background:linear-gradient(90deg,var(--accent),#c9b6ff);border-radius:999px"></div></div>
+                <div style="color:var(--text-3);font-size:var(--fs-12);text-align:right">${g.pct}%</div>
+              </div>`).join("")}
+            <div class="mini-spark">${USER_PROFILE.listening_7d.map(m => `<span style="height:${m * 0.25}px"></span>`).join("")}</div>
+            <div style="margin-top:8px;font-size:var(--fs-11);color:var(--text-3)">过去 7 天每日收听时长</div>
+          </div>
+        </div>
+
+        <section class="page-section" style="margin-top:24px">
+          <h3 class="section-title">AI 生成的推荐歌单</h3>
+          <div class="card-grid">
+            ${PLAYLISTS.filter(p => p.type === "ai").map(playlistCard).join("")}
+          </div>
+        </section>
+
+        <section class="page-section">
+          <h3 class="section-title">相似推荐 · 基于当前播放</h3>
+          <p style="color:var(--text-3);font-size:var(--fs-13);margin-bottom:14px">与「Starlit Drive · Aurora Lane」在风格、情绪、节奏上相近的歌曲</p>
+          <div class="track-list">
+            ${pickN(TRACKS, 8, 1).map((t, i) => rowFor(t, i)).join("")}
+          </div>
+        </section>
+      </section>
+    `;
+  }
+
+  // ---- 页面：曲库（全部歌曲） ----
+  function library() {
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero">
+          <h2>曲库 · ${TRACKS.length} 首歌曲</h2>
+          <p>所有歌曲均来自本地挂载目录 · 元数据已自动补全 · 管理员扫描管理</p>
+        </div>
+        <div class="filter-bar">
+          ${["全部","电子","民谣","爵士","Post-rock","乡村摇滚","Dream Pop","Indie Rock"].map((f, i) =>
+            `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${f}</span>`).join("")}
+          <span class="filter-spacer"></span>
+          <span class="filter-pill">按标题 A→Z</span>
+          <span class="filter-pill">按添加时间</span>
+          <span class="filter-pill">按播放次数</span>
+        </div>
+        <div class="track-list">
+          ${TRACKS.map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：歌手 ----
+  function artists() {
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero">
+          <h2>歌手 · ${ARTISTS.length} 位</h2>
+          <p>点击进入歌手主页，查看完整专辑、热门单曲与相似歌手推荐。</p>
+        </div>
+        <div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+          ${ARTISTS.map(artistCard).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：专辑 ----
+  function albums() {
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero">
+          <h2>专辑 · ${ALBUMS.length} 张</h2>
+          <p>以专辑为单位的完整收藏 · 点击查看曲目列表与相似专辑。</p>
+        </div>
+        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+          ${ALBUMS.map(albumCard).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：文件夹 ----
+  function folders() {
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero">
+          <h2>文件夹视图</h2>
+          <p>完全映射宿主机 /music 目录结构 · 直接以目录方式浏览与播放</p>
+        </div>
+        <div class="folder-breadcrumb">
+          <span>music</span><span class="sep">/</span>
+        </div>
+        <div class="folder-grid">
+          ${FOLDERS.map((f, i) => {
+            const [c1, c2] = colorOf(i);
+            return `
+              <div class="folder-item" data-folder="${f.path}">
+                <div class="folder-ic" style="background:${c1}22;color:${c1}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+                </div>
+                <div>
+                  <div class="folder-name">${f.name}</div>
+                  <div class="playlist-sub" style="margin-top:2px">${f.count} 首 · ${f.path}</div>
+                </div>
+              </div>`;
+          }).join("")}
+        </div>
+        <h3 class="section-title" style="margin-top:32px">当前目录下的歌曲</h3>
+        <div class="track-list">
+          ${pickN(TRACKS, 10, 0).map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：个人中心 ----
+  function profile() {
+    return `
+      <section class="page-section">
+        <div class="profile-head">
+          <div class="avatar-lg">L</div>
+          <div>
+            <div class="ph-type">Listener · 普通用户</div>
+            <h2 class="profile-name">Listener_01</h2>
+            <p class="profile-bio">在地铁和深夜咖啡馆听歌 · 偏爱 Dream-pop 和慢爵士。</p>
+            <div class="profile-meta">
+              <span>🎧 ${USER_PROFILE.listen_minutes} 分钟总收听</span>
+              <span>♡ ${USER_PROFILE.fav_count} 首收藏</span>
+              <span>📀 ${USER_PROFILE.playlists} 张歌单</span>
+              <span>📅 加入于 2024 年 2 月</span>
+            </div>
+            <div class="profile-ctas">
+              <button class="primary">编辑资料</button>
+              <button>我的设置</button>
+              <button>导出听歌报告</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-block"><div class="stat-num">3,284</div><div class="stat-label">分钟 · 过去 30 天</div></div>
+          <div class="stat-block"><div class="stat-num">182</div><div class="stat-label">收藏歌曲</div></div>
+          <div class="stat-block"><div class="stat-num">28</div><div class="stat-label">收藏专辑</div></div>
+          <div class="stat-block"><div class="stat-num">12</div><div class="stat-label">收藏歌手</div></div>
+        </div>
+
+        <div class="col-tabs" style="margin-top:16px">
+          <button class="col-tab is-active" data-coltab="songs">收藏的歌曲</button>
+          <button class="col-tab" data-coltab="albums">收藏的专辑</button>
+          <button class="col-tab" data-coltab="artists">收藏的歌手</button>
+          <button class="col-tab" data-coltab="playlists">我的歌单</button>
+          <button class="col-tab" data-coltab="history">播放历史</button>
+        </div>
+
+        <div id="coltab-body"></div>
+      </section>
+    `;
+  }
+  function profileColtab(type) {
+    if (type === "songs") {
+      return `<div class="track-list">${pickN(TRACKS, 10, 4).map((t, i) => rowFor(t, i)).join("")}</div>`;
+    }
+    if (type === "albums") {
+      return `<div class="card-grid">${ALBUMS.slice(0, 8).map(albumCard).join("")}</div>`;
+    }
+    if (type === "artists") {
+      return `<div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${ARTISTS.slice(0, 8).map(artistCard).join("")}</div>`;
+    }
+    if (type === "playlists") {
+      return `<div class="card-grid">${PLAYLISTS.filter(p => p.type === "user").map(playlistCard).join("")}</div>`;
+    }
+    if (type === "history") {
+      return `
+        <div class="filter-bar">
+          <span class="filter-pill is-active">今天</span>
+          <span class="filter-pill">本周</span>
+          <span class="filter-pill">本月</span>
+          <span class="filter-pill">全部</span>
+          <span class="filter-spacer"></span>
+          <span class="filter-pill">一键清空历史</span>
+        </div>
+        <div class="track-list">${pickN(TRACKS, 12, 2).map((t, i) => rowFor(t, i)).join("")}</div>`;
+    }
+    return "";
+  }
+
+  // ---- 页面：歌单详情 ----
+  function playlistDetail(id) {
+    const p = PLAYLISTS.find(pl => pl.id === id) || PLAYLISTS[0];
+    const [c1, c2] = colorOf(p.id.charCodeAt(1));
+    return `
+      <section class="page-section">
+        <div class="playlist-hero">
+          <div class="cover cover-lg" style="--c1:${c1};--c2:${c2}"></div>
+          <div>
+            <div class="ph-type">${p.type === "ai" ? "AI 生成歌单" : (p.type === "official" ? "官方精选歌单" : "用户歌单")}</div>
+            <h2 class="ph-title">${p.title}</h2>
+            <p class="ph-sub">${p.desc}</p>
+            <div class="ph-meta">
+              <span>• by MuseBox</span>
+              <span>• ${p.tracks} 首 · ${p.duration}</span>
+              <span>• 创建于 2026-06-20</span>
+              <span>• 已被 1,284 人收藏</span>
+            </div>
+            <div class="ph-ctas">
+              <button class="ph-play" data-play-playlist="${p.id}">▶ 播放</button>
+              <button class="ph-ghost">♡ 收藏</button>
+              <button class="ph-ghost">⇅ 导入 / 导出</button>
+              <button class="ph-ghost">⋯ 更多</button>
+            </div>
+          </div>
+        </div>
+        <div class="track-list">
+          ${pickN(TRACKS, Math.min(p.tracks, 12), p.id.charCodeAt(1) % 6).map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：搜索结果 ----
+  function searchResults(q) {
+    const kw = (q || "").trim();
+    const k = kw.toLowerCase();
+    const byTrack = TRACKS.filter(t => !k || t.title.toLowerCase().includes(k) || t.artist.toLowerCase().includes(k));
+    const byAlbum = ALBUMS.filter(a => !k || a.title.toLowerCase().includes(k));
+    const byArtist = ARTISTS.filter(a => !k || a.name.toLowerCase().includes(k));
+    const byPl = PLAYLISTS.filter(p => !k || p.title.toLowerCase().includes(k));
+    const byChart = CHARTS.filter(c => !k || c.title.toLowerCase().includes(k));
+
+    function hl(text) {
+      if (!k) return text;
+      const re = new RegExp(`(${k.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")})`, "gi");
+      return text.replace(re, '<span class="hl">$1</span>');
+    }
+
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero">
+          <h2>${kw ? `"${kw}" 的搜索结果` : "搜索"}</h2>
+          <p>共 ${byTrack.length + byAlbum.length + byArtist.length + byPl.length + byChart.length} 条结果，其中本地曲库 ${byTrack.length} 首</p>
+        </div>
+
+        <div class="search-group">
+          <h3 class="search-group-title">歌曲 · ${byTrack.length}</h3>
+          <div class="track-list">${byTrack.slice(0, 6).map((t, i) => rowFor({ ...t, title: hl(t.title), artist: hl(t.artist) }, i)).join("")}</div>
+        </div>
+
+        <div class="search-group">
+          <h3 class="search-group-title">专辑 · ${byAlbum.length}</h3>
+          <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${byAlbum.slice(0, 6).map(albumCard).join("")}</div>
+        </div>
+
+        <div class="search-group">
+          <h3 class="search-group-title">歌手 · ${byArtist.length}</h3>
+          <div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${byArtist.slice(0, 6).map(artistCard).join("")}</div>
+        </div>
+
+        <div class="search-group">
+          <h3 class="search-group-title">歌单 · ${byPl.length}</h3>
+          <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">${byPl.slice(0, 6).map(playlistCard).join("")}</div>
+        </div>
+
+        <div class="search-group">
+          <h3 class="search-group-title">全网 · ${byChart.length}（标注本地有无）</h3>
+          <div class="track-list">${byChart.slice(0, 6).map(chartRow).join("")}</div>
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：管理员后台 ----
+  function admin() {
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero">
+          <h2>管理后台</h2>
+          <p>所有前台展示、AI 模型、曲库、用户权限均在这里配置。</p>
+        </div>
+
+        <div class="admin-layout">
+          <!-- 左侧菜单 -->
+          <div>
+            <div class="admin-side-menu">
+              <div class="side-group-title" style="padding:4px 12px;font-size:11px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase">数据总览</div>
+              <button class="admin-side-item is-active" data-adm="dashboard">📊 仪表盘</button>
+
+              <div class="side-group-title" style="padding:14px 12px 4px;font-size:11px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase">曲库管理</div>
+              <button class="admin-side-item" data-adm="library-mgmt">📁 目录挂载 / 扫描</button>
+              <button class="admin-side-item" data-adm="metadata">✨ 元数据修复</button>
+              <button class="admin-side-item" data-adm="ops">🧹 重复 / 冗余清理</button>
+
+              <div class="side-group-title" style="padding:14px 12px 4px;font-size:11px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase">用户与内容</div>
+              <button class="admin-side-item" data-adm="users">👥 用户管理</button>
+              <button class="admin-side-item" data-adm="pl-edit">📝 歌单编辑</button>
+
+              <div class="side-group-title" style="padding:14px 12px 4px;font-size:11px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase">AI 与服务</div>
+              <button class="admin-side-item" data-adm="ai-config">⟐ AI 模型配置</button>
+              <button class="admin-side-item" data-adm="network">🌐 网络 / TCP 服务</button>
+              <button class="admin-side-item" data-adm="backup">🗄 日志 / 备份</button>
+            </div>
+          </div>
+
+          <div id="admin-body"></div>
+        </div>
+      </section>
+    `;
+  }
+
+  function admDashboard() {
+    return `
+      <div class="admin-hero-row">
+        <div class="admin-stat"><div class="as-num">${ADMIN_STATS.total_tracks}</div><div class="as-label">收录歌曲</div><div class="as-trend">+ 24 新扫描</div></div>
+        <div class="admin-stat"><div class="as-num">${ADMIN_STATS.total_users}</div><div class="as-label">注册用户</div><div class="as-trend" style="color:var(--accent)">7 人在线</div></div>
+        <div class="admin-stat"><div class="as-num">${ADMIN_STATS.total_plays_24h}</div><div class="as-label">24 小时播放</div><div class="as-trend">+ 12% vs 昨天</div></div>
+        <div class="admin-stat"><div class="as-num">${ADMIN_STATS.ai_calls_today}</div><div class="as-label">AI 调用次数</div><div class="as-trend">3 个模型已启用</div></div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>存储与性能</h3>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+          <div>
+            <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">磁盘 · ${ADMIN_STATS.storage_used} / ${ADMIN_STATS.storage_total}</div>
+            <div class="bar" style="height:8px;background:var(--bg-3);border-radius:999px;overflow:hidden"><div style="height:100%;width:10%;background:linear-gradient(90deg,var(--accent),#c9b6ff);border-radius:999px"></div></div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">CPU · ${ADMIN_STATS.cpu_load}</div>
+            <div class="bar" style="height:8px;background:var(--bg-3);border-radius:999px;overflow:hidden"><div style="height:100%;width:32%;background:linear-gradient(90deg,#4ade80,#22d3ee);border-radius:999px"></div></div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">内存 · ${ADMIN_STATS.mem_load}</div>
+            <div class="bar" style="height:8px;background:var(--bg-3);border-radius:999px;overflow:hidden"><div style="height:100%;width:48%;background:linear-gradient(90deg,#fbbf24,#f87171);border-radius:999px"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h3>最近扫描</h3>
+        <div class="scan-log">
+<span class="ok">[2026-06-21 09:12:04] ▸ 扫描 /music/Synthwave · 发现 88 个新文件</span>
+<span class="ok">[2026-06-21 09:12:11] ▸ 元数据补全 · 成功 86 / 88</span>
+<span class="warn">[2026-06-21 09:12:13] ▸ 2 个文件缺少封面 · 从云端拉取</span>
+<span class="ok">[2026-06-21 09:12:20] ▸ 封面拉取完成 · 2 / 2</span>
+<span class="dim">[2026-06-21 09:12:22] ▸ 重复检测：发现 1 组潜在重复</span>
+<span class="ok">[2026-06-21 09:12:24] ▸ TCP 连接数 ${ADMIN_STATS.tcp_connections} · 心跳正常</span>
+<span class="ok">[2026-06-21 09:12:30] ▸ AI 推荐缓存生成完毕 · 8 位用户</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function admLibraryMgmt() {
+    return `
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>目录挂载</h3>
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">将宿主机目录映射到容器。修改后需重新扫描。</p>
+        <div class="data-table" style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:var(--bg-3)">
+                <th style="padding:10px 14px;text-align:left;color:var(--text-3);font-size:12px">宿主机路径</th>
+                <th style="padding:10px 14px;text-align:left;color:var(--text-3);font-size:12px">文件数</th>
+                <th style="padding:10px 14px;text-align:left;color:var(--text-3);font-size:12px">状态</th>
+                <th style="padding:10px 14px;text-align:left;color:var(--text-3);font-size:12px">最后扫描</th>
+                <th style="padding:10px 14px;text-align:right;color:var(--text-3);font-size:12px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${FOLDERS.map(f => `
+                <tr style="border-top:1px solid var(--border)">
+                  <td style="padding:10px 14px;font-size:13px"><code>${f.path}</code></td>
+                  <td style="padding:10px 14px;font-size:13px;color:var(--text-2)">${f.count}</td>
+                  <td style="padding:10px 14px;font-size:13px"><span class="status-dot">已挂载</span></td>
+                  <td style="padding:10px 14px;font-size:12px;color:var(--text-3)">2 小时前</td>
+                  <td style="padding:10px 14px;text-align:right"><button class="icon-btn">⋯</button></td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="ai-card-cta">＋ 添加目录</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">立即全量扫描</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">增量扫描</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">后台定时任务</button>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h3>扫描日志</h3>
+        <div class="scan-log">
+<span class="ok">[09:12:04] ▸ 扫描 /music/Synthwave · 88 个新文件</span>
+<span class="ok">[09:12:11] ▸ 元数据补全 · 成功 86 / 88</span>
+<span class="warn">[09:12:13] ▸ 2 个文件缺少封面，拉取中...</span>
+<span class="ok">[09:12:20] ▸ 封面拉取完成 · 2 / 2</span>
+<span class="dim">[09:12:22] ▸ 重复检测：1 组潜在重复</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function admUsers() {
+    const users = [
+      { name: "listener_01", role: "普通用户", email: "listener@local", login: "2 分钟前", status: "online" },
+      { name: "nightrain", role: "普通用户", email: "nightrain@local", login: "1 小时前", status: "online" },
+      { name: "cafe.m", role: "普通用户", email: "cafe@local", login: "昨天 · 22:14", status: "off" },
+      { name: "admin", role: "管理员", email: "admin@local", login: "刚刚", status: "online" },
+    ];
+    return `
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>用户管理</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px">
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:22px">24</div><div class="as-label">总用户</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:22px;color:var(--accent)">7</div><div class="as-label">在线</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:22px">2</div><div class="as-label">管理员</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:22px">22</div><div class="as-label">普通用户</div></div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr><th>用户名</th><th>角色</th><th>邮箱</th><th>最近登录</th><th>状态</th><th style="text-align:right">操作</th></tr>
+          </thead>
+          <tbody>
+            ${users.map(u => `
+              <tr>
+                <td>${u.name}</td>
+                <td style="color:${u.role === '管理员' ? 'var(--accent)' : 'var(--text-2)'}">${u.role}</td>
+                <td style="color:var(--text-3);font-size:12px">${u.email}</td>
+                <td style="color:var(--text-3);font-size:12px">${u.login}</td>
+                <td><span class="status-dot ${u.status === 'off' ? 'is-off' : ''}">${u.status === 'online' ? '在线' : '离线'}</span></td>
+                <td style="text-align:right"><button class="icon-btn">⋯</button></td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="admin-panel">
+        <h3>系统参数</h3>
+        <div class="switch-row"><div><div style="font-size:13px">开放注册</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">允许新用户自主申请账号。关闭后仅管理员可创建。</div></div><div class="switch is-on"></div></div>
+        <div class="switch-row"><div><div style="font-size:13px">邀请码注册</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">开启后新注册需要填写有效邀请码。</div></div><div class="switch"></div></div>
+        <div class="switch-row"><div><div style="font-size:13px">每日 AI 推荐自动生成</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">自动在凌晨 3:00 为每位用户生成个性化推荐。</div></div><div class="switch is-on"></div></div>
+      </div>
+    `;
+  }
+
+  function admAIConfig() {
+    const models = [
+      { name: "DeepSeek · Music LLM", desc: "用于自然语言 → 歌单匹配", key: "sk-...7a2f", calls: 184, enabled: true },
+      { name: "本地 · 小模型 (FastRec)",  desc: "本地私有化推荐引擎，无外部请求", key: "-", calls: 642, enabled: true },
+      { name: "Qwen · 情绪识别",            desc: "情绪标签生成，用于情绪匹配", key: "sk-...q2nM", calls: 112, enabled: false },
+    ];
+    return `
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>AI 模型管理</h3>
+        <div style="margin-bottom:14px;color:var(--text-3);font-size:12px">多模型接入 · 云端 API 与本地私有化模型兼容 · 可按调用限流</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
+          ${models.map(m => `
+            <div class="admin-stat" style="padding:18px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center">
+              <div>
+                <div style="font-weight:600">${m.name}</div>
+                <div style="font-size:12px;color:var(--text-3);margin-top:4px">${m.desc}</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:10px;font-family:monospace">API Key: ${m.key}</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:4px">今日调用 · ${m.calls} 次</div>
+              </div>
+              <div class="switch ${m.enabled ? "is-on" : ""}"></div>
+            </div>`).join("")}
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="ai-card-cta">＋ 添加模型</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">调用统计</button>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>推荐策略</h3>
+        <div class="two-col-form">
+          <div class="form-field"><label>推荐数量（每日）</label><input type="text" value="10 首" /></div>
+          <div class="form-field"><label>冷启动策略</label><select><option>用热门榜单填充</option><option>用 AI 随机探索</option></select></div>
+          <div class="form-field"><label>行为权重 · 播放完成</label><input type="text" value="0.55" /></div>
+          <div class="form-field"><label>行为权重 · 收藏</label><input type="text" value="0.30" /></div>
+          <div class="form-field"><label>行为权重 · 跳过</label><input type="text" value="-0.15" /></div>
+          <div class="form-field"><label>推荐刷新时间</label><input type="text" value="每日 03:00" /></div>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h3>全网热榜爬虫</h3>
+        <div class="switch-row"><div><div>网易云 · 热歌榜</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每日 02:00 同步</div></div><div class="switch is-on"></div></div>
+        <div class="switch-row"><div><div>Spotify · Global Top 50</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每 6 小时同步一次</div></div><div class="switch is-on"></div></div>
+        <div class="switch-row"><div><div>Apple Music · Daily Top 100</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每日 02:30 同步</div></div><div class="switch"></div></div>
+      </div>
+    `;
+  }
+
+  function admNetwork() {
+    return `
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>站点配置</h3>
+        <div class="two-col-form">
+          <div class="form-field"><label>站点名称</label><input type="text" value="MuseBox · 私有音乐" /></div>
+          <div class="form-field"><label>Logo</label><input type="text" value="default" /></div>
+          <div class="form-field"><label>公网地址</label><input type="text" value="https://music.mydomain.local" /></div>
+          <div class="form-field"><label>版权信息</label><input type="text" value="© 2026 MuseBox · 仅供个人使用" /></div>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>TCP 实时服务</h3>
+        <div class="two-col-form">
+          <div class="form-field"><label>端口</label><input type="text" value="8787" /></div>
+          <div class="form-field"><label>心跳间隔 (秒)</label><input type="text" value="30" /></div>
+          <div class="form-field"><label>最大同时连接数</label><input type="text" value="1024" /></div>
+          <div class="form-field"><label>弱网重连策略</label><select><option>指数退避</option></select></div>
+        </div>
+
+        <div style="margin-top:16px">
+          <h3 style="font-size:14px;margin-bottom:10px">当前连接 (${ADMIN_STATS.tcp_connections})</h3>
+          <table class="data-table">
+            <thead><tr><th>客户端</th><th>用户</th><th>版本</th><th>延迟</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td>iPhone 15 · iOS 17</td><td>listener_01</td><td style="color:var(--text-3);font-size:12px">v1.2.4</td><td>32 ms</td><td><span class="status-dot">正常</span></td></tr>
+              <tr><td>iPad · iPadOS 17</td><td>nightrain</td><td style="color:var(--text-3);font-size:12px">v1.2.4</td><td>48 ms</td><td><span class="status-dot">正常</span></td></tr>
+              <tr><td>Mac · Chrome 128</td><td>cafe.m</td><td style="color:var(--text-3);font-size:12px">Web</td><td>12 ms</td><td><span class="status-dot">正常</span></td></tr>
+              <tr><td>Android 14</td><td>listener_01</td><td style="color:var(--text-3);font-size:12px">v1.2.4</td><td>58 ms</td><td><span class="status-dot">正常</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h3>网络 / 安全</h3>
+        <div class="switch-row"><div><div>HTTPS 强制</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">所有 HTTP 请求重定向到 HTTPS</div></div><div class="switch is-on"></div></div>
+        <div class="switch-row"><div><div>IP 黑白名单</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">白名单模式 · 仅允许 192.168.0.0/16</div></div><div class="switch is-on"></div></div>
+        <div class="switch-row"><div><div>接口限流</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每 IP 每分钟 120 次</div></div><div class="switch is-on"></div></div>
+      </div>
+    `;
+  }
+
+  function admBackup() {
+    return `
+      <div class="admin-panel" style="margin-bottom:14px">
+        <h3>系统日志</h3>
+        <div class="filter-bar" style="margin-bottom:14px">
+          <span class="filter-pill is-active">全部</span>
+          <span class="filter-pill">系统</span>
+          <span class="filter-pill">播放</span>
+          <span class="filter-pill">错误</span>
+          <span class="filter-pill">操作</span>
+          <span class="filter-spacer"></span>
+          <span class="filter-pill">导出</span>
+        </div>
+        <div class="scan-log">
+<span class="ok">[09:12:04] INFO · 扫描 /music/Synthwave 完成 · 88 个文件</span>
+<span class="ok">[09:12:20] INFO · AI 推荐缓存生成 · 8 位用户</span>
+<span class="warn">[09:12:25] WARN · listener_18 连续 API 请求 120 次/min · 触发限流</span>
+<span class="ok">[09:13:02] INFO · user nightrain 从 iPhone 登录 (TCP)</span>
+<span class="ok">[09:13:04] INFO · user nightrain 开始播放 "Starlit Drive" · 进度同步</span>
+<span class="dim">[09:13:10] DEBUG · 双端同步队列 · 3 条命令 · 0 冲突</span>
+<span class="ok">[09:14:00] INFO · 每日备份完成 · /backup/musebox-20260621.gz · 184 MB</span>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <h3>备份与恢复</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div class="admin-stat" style="padding:16px"><div class="as-num" style="font-size:18px">每日自动备份</div><div class="as-label" style="margin-top:4px">03:30 · 保留最近 14 份</div></div>
+          <div class="admin-stat" style="padding:16px"><div class="as-num" style="font-size:18px">最近备份</div><div class="as-label" style="margin-top:4px">2026-06-21 03:30 · 184 MB</div></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="ai-card-cta">立即备份</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">导入配置</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">导出配置</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">从备份恢复</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function admMetadata() {
+    return `
+      <div class="admin-panel">
+        <h3>元数据修复</h3>
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">自动从音乐指纹与云端数据源补齐标题、歌手、专辑、封面、歌词。</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px">
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px">${ADMIN_STATS.total_tracks}</div><div class="as-label">已扫描歌曲</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px;color:var(--good)">1,248</div><div class="as-label">元数据完整</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px;color:var(--warn)">36</div><div class="as-label">需要修复</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px;color:var(--text-3)">8</div><div class="as-label">缺失封面</div></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="ai-card-cta">一键修复</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">歌词重新匹配</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">封面重新拉取</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function admOps() {
+    return `
+      <div class="admin-panel">
+        <h3>重复检测与冗余清理</h3>
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">基于文件指纹 + 元数据的双重比对，识别可能的重复。</p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px">3</div><div class="as-label">重复歌曲组</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px">12</div><div class="as-label">孤立元数据记录</div></div>
+          <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px">42 MB</div><div class="as-label">可释放空间</div></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="ai-card-cta">运行检测</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">批量编辑</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function admPlaylistEdit() {
+    return `
+      <div class="admin-panel">
+        <h3>官方歌单编辑</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">
+          ${PLAYLISTS.filter(p => p.type === "official").map(playlistCard).join("")}
+        </div>
+        <div style="margin-top:20px;display:flex;gap:8px">
+          <button class="ai-card-cta">新建官方歌单</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">用户公开歌单审核</button>
+          <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">首页推荐置顶位</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return {
+    home, discover, aiCenter, library, artists, albums, folders,
+    profile, profileColtab, playlistDetail, searchResults,
+    admin, admDashboard, admLibraryMgmt, admUsers, admAIConfig,
+    admNetwork, admBackup, admMetadata, admOps, admPlaylistEdit,
+  };
+})();

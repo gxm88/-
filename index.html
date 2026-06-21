@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MuseBox · 私有化 AI 音乐服务器</title>
+  <link rel="stylesheet" href="css/design-tokens.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/pages.css" />
+</head>
+<body>
+
+  <!-- ========== 登录页 ========== -->
+  <section id="page-login" class="page-login is-active" data-route="login">
+    <div class="login-hero">
+      <div class="login-hero-inner">
+        <div class="brand-mark">
+          <div class="brand-dot"></div>
+          <span>MuseBox</span>
+        </div>
+        <h1 class="login-headline">在自己的曲库里，听见自己。</h1>
+        <p class="login-sub">私有化部署 · AI 推荐 · Web / APP 双端互通 · 全链路实时同步</p>
+      </div>
+      <div class="hero-orb orb-1"></div>
+      <div class="hero-orb orb-2"></div>
+    </div>
+
+    <div class="login-form-wrap">
+      <div class="login-card">
+        <div class="login-tabs" role="tablist">
+          <button class="login-tab is-active" data-logintab="pwd" type="button">账号登录</button>
+          <button class="login-tab" data-logintab="code" type="button">验证码登录</button>
+        </div>
+
+        <div class="login-field">
+          <label>账号</label>
+          <input type="text" id="login-account" placeholder="用户名 / 邮箱 / 手机号" value="listener" />
+        </div>
+
+        <div class="login-field" data-logintab-field="pwd">
+          <label>密码</label>
+          <input type="password" placeholder="请输入密码" value="demo" />
+        </div>
+
+        <div class="login-field is-hidden" data-logintab-field="code">
+          <label>验证码</label>
+          <div class="inline-code">
+            <input type="text" placeholder="6 位验证码" />
+            <button class="btn-ghost" type="button">获取验证码</button>
+          </div>
+        </div>
+
+        <div class="login-row">
+          <label class="check">
+            <input type="checkbox" checked />
+            <span>记住登录状态</span>
+          </label>
+          <a class="link-sub" href="#">忘记密码？</a>
+        </div>
+
+        <button class="btn-primary" id="btn-login-user" type="button">以普通用户进入</button>
+        <button class="btn-outline" id="btn-login-admin" type="button">以管理员进入</button>
+        <button class="btn-ghost" id="btn-login-guest" type="button">访客免登录浏览</button>
+
+        <div class="login-foot">
+          <span>还没有账号？</span>
+          <a class="link-accent" href="#">申请注册（需管理员开放）</a>
+        </div>
+      </div>
+      <p class="copyright">MuseBox · Private AI Music Server · Docker Deploy</p>
+    </div>
+  </section>
+
+  <!-- ========== 主应用 Shell ========== -->
+  <section id="app-shell" class="app-shell" data-route="app">
+
+    <!-- 顶部栏 -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand-mark small">
+          <div class="brand-dot"></div>
+          <span>MuseBox</span>
+        </div>
+      </div>
+
+      <div class="topbar-center">
+        <div class="global-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path>
+          </svg>
+          <input type="text" id="global-search-input" placeholder="搜索歌曲 / 歌手 / 专辑 / 歌单" />
+          <kbd>Ctrl K</kbd>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button class="icon-btn" id="btn-toggle-admin" title="管理后台入口（仅管理员）">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l2.4 6.9L21 10l-5.5 4 1.7 7L12 17.8 6.8 21l1.7-7L3 10l6.6-1.1z"></path>
+          </svg>
+        </button>
+        <div class="avatar-trigger" id="avatar-trigger">
+          <div class="avatar" id="user-avatar">L</div>
+          <span class="user-name" id="user-name">普通用户</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6"></path>
+          </svg>
+          <div class="avatar-menu" id="avatar-menu">
+            <div class="avatar-menu-row"><span class="menu-title" id="menu-user-name">普通用户</span><span class="menu-sub" id="menu-user-role">Listener</span></div>
+            <button class="menu-item" data-goto="profile">个人中心</button>
+            <button class="menu-item" data-goto="library">我的曲库</button>
+            <button class="menu-item" data-goto="favorites">我的收藏</button>
+            <button class="menu-item menu-item-accent is-admin-only" data-goto="admin">进入管理后台</button>
+            <div class="menu-divider"></div>
+            <button class="menu-item" id="btn-logout">退出登录</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主体：左侧导航 + 内容区 -->
+    <div class="app-body">
+
+      <nav class="sidebar">
+        <div class="side-section">
+          <div class="side-title">发现</div>
+          <button class="side-item is-active" data-goto="home">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2V10z"></path></svg>
+            <span>首页推荐</span>
+          </button>
+          <button class="side-item" data-goto="discover">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M8 12a4 4 0 0 1 8 0"></path></svg>
+            <span>发现</span>
+          </button>
+          <button class="side-item" data-goto="charts">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+            <span>全网热榜</span>
+          </button>
+        </div>
+
+        <div class="side-section">
+          <div class="side-title">曲库</div>
+          <button class="side-item" data-goto="library">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h13v14H3zM20 8v11"></path></svg>
+            <span>歌曲</span>
+          </button>
+          <button class="side-item" data-goto="artists">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+            <span>歌手</span>
+          </button>
+          <button class="side-item" data-goto="albums">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 9h10M9 12h10M9 15h6"></path></svg>
+            <span>专辑</span>
+          </button>
+          <button class="side-item" data-goto="folders">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path></svg>
+            <span>文件夹</span>
+          </button>
+        </div>
+
+        <div class="side-section">
+          <div class="side-title">智能</div>
+          <button class="side-item" data-goto="ai">
+            <span class="ai-dot"></span>
+            <span>AI 推荐中心</span>
+          </button>
+          <button class="side-item" data-goto="playlist-ai">AI 生成歌单</button>
+        </div>
+
+        <div class="side-section">
+          <div class="side-title">我的</div>
+          <button class="side-item" data-goto="profile">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+            <span>个人中心</span>
+          </button>
+          <button class="side-item" data-goto="favorites">收藏的歌曲</button>
+          <button class="side-item" data-goto="history">播放历史</button>
+        </div>
+
+        <div class="side-section side-playlists">
+          <div class="side-title-row">
+            <div class="side-title">我的歌单</div>
+            <button class="side-add" id="btn-new-playlist" title="新建歌单">+</button>
+          </div>
+          <div class="side-playlist-list" id="side-playlist-list"></div>
+        </div>
+      </nav>
+
+      <!-- 页面内容 -->
+      <main class="page-body" id="page-body">
+        <!-- 动态注入 -->
+      </main>
+    </div>
+
+    <!-- 底部常驻播放器 -->
+    <footer class="player-bar" id="player-bar">
+      <div class="player-track">
+        <div class="player-cover" id="player-cover"></div>
+        <div class="player-meta">
+          <div class="player-title" id="player-title">未在播放</div>
+          <div class="player-sub" id="player-sub">选择一首歌开始</div>
+        </div>
+        <button class="icon-btn" id="btn-fav" title="收藏">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11-1 .6-3 .6-4 0z"></path></svg>
+        </button>
+      </div>
+
+      <div class="player-center">
+        <div class="player-controls">
+          <button class="icon-btn" title="播放模式">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4M3 11v-2a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+          </button>
+          <button class="icon-btn" id="btn-prev" title="上一首">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9.5 12l10-6v12z"></path></svg>
+          </button>
+          <button class="play-btn" id="btn-play" title="播放/暂停">
+            <svg id="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+            <svg id="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"></path></svg>
+          </button>
+          <button class="icon-btn" id="btn-next" title="下一首">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4.5 18l10-6-10-6z"></path></svg>
+          </button>
+          <button class="icon-btn" id="btn-queue" title="队列">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h13M3 18h9M17 14l4 4-4 4"></path></svg>
+          </button>
+        </div>
+        <div class="player-progress">
+          <span class="t t-cur" id="t-cur">00:00</span>
+          <div class="bar" id="progress-bar"><div class="bar-fill" id="progress-fill"></div></div>
+          <span class="t t-dur" id="t-dur">00:00</span>
+        </div>
+      </div>
+
+      <div class="player-right">
+        <button class="icon-btn" id="btn-volume" title="音量">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a5 5 0 0 1 0 6M19 7a8 8 0 0 1 0 10"></path></svg>
+        </button>
+        <div class="vol-bar"><div class="vol-fill" id="vol-fill"></div></div>
+        <button class="icon-btn" id="btn-expand" title="全屏播放器">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>
+        </button>
+      </div>
+
+      <!-- 播放队列浮层 -->
+      <div class="queue-panel" id="queue-panel">
+        <div class="queue-head">
+          <span>播放队列</span>
+          <button class="icon-btn" id="btn-close-queue">×</button>
+        </div>
+        <div class="queue-list" id="queue-list"></div>
+      </div>
+    </footer>
+
+    <!-- 全屏歌词/播放器 -->
+    <div class="fullscreen-player" id="fullscreen-player">
+      <button class="fs-close" id="btn-fs-close" title="收起">×</button>
+      <div class="fs-left">
+        <div class="fs-cover" id="fs-cover"></div>
+        <div class="fs-meta">
+          <div class="fs-title" id="fs-title">未在播放</div>
+          <div class="fs-sub" id="fs-sub">—</div>
+          <div class="fs-stats">
+            <span>已听 <strong id="fs-plays">0</strong> 次</span>
+            <span class="ai-tag">AI 推荐匹配度 <strong id="fs-match">—</strong></span>
+          </div>
+        </div>
+      </div>
+      <div class="fs-right">
+        <div class="lyrics" id="lyrics">
+          <div class="lyric-line">[00:00] 选择一首歌开始聆听</div>
+          <div class="lyric-line">[00:04] 播放状态将在 Web / APP 实时同步</div>
+          <div class="lyric-line">[00:08] 双端队列与播放进度保持一致</div>
+          <div class="lyric-line">[00:12] 播放数据将进入 AI 模型用于个性化推荐</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/data.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/pages.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

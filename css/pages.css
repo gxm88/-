@@ -1,0 +1,124 @@
+/* ============================================================
+   页面级 / Pages
+   ============================================================ */
+
+/* ---- 通用页面排版 ---- */
+.page-intro-hero {
+  padding: 20px 4px 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+.page-intro-hero h2 { font-size: var(--fs-22); font-weight: 700;}
+.page-intro-hero p { margin-top: 6px; color: var(--text-3); font-size: var(--fs-13); }
+
+/* 首页 banner 下面的推荐 row */
+.home-row-title {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+/* AI 推荐中心页面 */
+.ai-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.ai-model-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.ai-model-card {
+  padding: 16px;
+  border-radius: var(--r-12);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ai-model-card:hover { border-color: var(--accent); }
+.ai-model-card.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.ai-model-card .title { font-size: var(--fs-14); font-weight: 600; }
+.ai-model-card .desc { font-size: var(--fs-12); color: var(--text-3); }
+
+/* 推荐风格画像页 */
+.radar-chart {
+  aspect-ratio: 1 / 1;
+  background:
+    radial-gradient(circle at center, var(--accent-soft), transparent 70%),
+    var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-14);
+  padding: 20px;
+  display: flex; align-items: center; justify-content: center;
+}
+.radar-chart svg { width: 100%; height: 100%; }
+
+/* 个人中心 头图 */
+.profile-head {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 28px;
+  align-items: center;
+  padding: 24px 4px 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+.avatar-lg {
+  width: 120px; height: 120px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44px; font-weight: 700;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+.profile-name { font-size: var(--fs-28); font-weight: 700; }
+.profile-bio { color: var(--text-2); margin-top: 8px; font-size: var(--fs-13); }
+.profile-meta { margin-top: 14px; font-size: var(--fs-12); color: var(--text-3); display: flex; gap: 20px; flex-wrap: wrap; }
+.profile-ctas { margin-top: 18px; display: flex; gap: 8px;}
+.profile-ctas button {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: var(--fs-12);
+  color: var(--text-1);
+}
+.profile-ctas button:hover { background: var(--bg-2); }
+.profile-ctas button.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+}
+
+/* 管理员仪表盘 */
+.admin-hero-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.admin-hero-row .admin-stat {
+  padding: 22px;
+  background: linear-gradient(135deg, var(--bg-2), var(--bg-1));
+}
+.admin-panel + .admin-panel { margin-top: 14px; }
+
+/* 文件目录扫描模拟 */
+.scan-log {
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: var(--r-10);
+  padding: 16px 18px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  line-height: 1.9;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.scan-log .ok { color: var(--good); }
+.scan-log .warn { color: var(--warn); }
+.scan-log .dim { color: var(--text-dim); }
