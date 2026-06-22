@@ -87,17 +87,19 @@ const API = (() => {
         // ---- 认证 ----
         if (path === "/login" && method === "POST") {
           const { username, password } = body || {};
-          const isAdmin = username === "admin";
+          if (username !== "admin" || password !== "admin") {
+            return reject({ error: "用户名或密码错误", status: 401 });
+          }
           const mockToken = "mock-token-" + Date.now();
           return resolve({
             ok: true,
             token: mockToken,
             user: {
-              id: isAdmin ? 1 : 2,
-              username: username || "user",
-              name: isAdmin ? "管理员" : "普通用户",
-              role: isAdmin ? "admin" : "user",
-              avatar: (username || "U").charAt(0).toUpperCase()
+              id: 1,
+              username: "admin",
+              name: "管理员",
+              role: "admin",
+              avatar: "A"
             }
           });
         }

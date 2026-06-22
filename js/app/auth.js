@@ -13,9 +13,15 @@ window.App = window.App || {};
   };
 
   // ---- 登录与权限 ----
-  async function login() {
+  async function login(credentials) {
     try {
-      const res = await API.login({ username: 'admin', password: 'admin123' });
+      const username = credentials ? credentials.username : (document.getElementById("login-account")?.value || "").trim();
+      const password = credentials ? credentials.password : (document.getElementById("login-password")?.value || "").trim();
+      if (!username || !password) {
+        window.App.showToast("请输入账号和密码", "warn");
+        return;
+      }
+      const res = await API.login({ username, password });
       if (res.token) {
         localStorage.setItem('token', res.token);
         localStorage.setItem('user', JSON.stringify(res.user));
@@ -27,13 +33,7 @@ window.App = window.App || {};
       }
     } catch (e) {
       state.logged = false;
-      window.App.showToast('登录失败，使用离线模式', 'warn');
-      // Fallback to mock login
-      state.logged = true;
-      state.user = { id: 1, username: 'admin', role: 'admin', avatar: 'A' };
-      localStorage.setItem('user', JSON.stringify(state.user));
-      updateUserMenu();
-      window.App.navigate('home');
+      window.App.showToast(e?.error || '登录失败，请检查账号密码', 'warn');
     }
   }
 

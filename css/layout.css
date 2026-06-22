@@ -266,7 +266,12 @@
   border-right: 1px solid var(--border);
   padding: 12px 8px;
   overflow-y: auto;
+  max-height: 100vh;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.sidebar::-webkit-scrollbar { display: none; }
 .side-section { margin-bottom: 14px; }
 .side-title {
   padding: 0 10px 6px;

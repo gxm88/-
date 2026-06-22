@@ -21,12 +21,10 @@ window.App = window.App || {};
   }
 
   function init() {
-    const btnUser = document.getElementById("btn-login-user");
-    const btnAdmin = document.getElementById("btn-login-admin");
+    const btnSubmit = document.getElementById("btn-login-submit");
     const btnGuest = document.getElementById("btn-login-guest");
-    if (btnUser) btnUser.addEventListener("click", () => window.App.login());
-    if (btnAdmin) btnAdmin.addEventListener("click", () => window.App.login());
-    if (btnGuest) btnGuest.addEventListener("click", () => window.App.login());
+    if (btnSubmit) btnSubmit.addEventListener("click", () => window.App.login());
+    if (btnGuest) btnGuest.addEventListener("click", () => window.App.login({ username: "guest", password: "" }));
 
     document.querySelectorAll(".login-tab").forEach(tab => {
       tab.addEventListener("click", () => {
