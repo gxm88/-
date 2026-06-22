@@ -23,18 +23,15 @@ const App = (() => {
   const ROUTES = {
     home: () => Pages.home(),
     discover: () => Pages.discover(),
-    charts: () => Pages.discover(),
+    charts: () => Pages.charts(),
     ai: () => Pages.aiCenter(),
+    "playlist-ai": () => Pages.aiCenter(),
     library: () => Pages.library(),
     artists: () => Pages.artists(),
     albums: () => Pages.albums(),
     folders: () => Pages.folders(),
     profile: () => Pages.profile(),
-    favorites: () => {
-      // 复用 profile 中的 "收藏的歌曲"
-      const html = Pages.profile();
-      return html;
-    },
+    favorites: () => Pages.profile(),
     history: () => Pages.profile(),
     search: (q) => Pages.searchResults(q),
     "playlist-detail": (id) => Pages.playlistDetail(id),
@@ -70,16 +67,25 @@ const App = (() => {
     const renderer = ROUTES[route] || ROUTES.home;
     container.innerHTML = renderer(payload);
 
-    // 导航激活（侧栏 + 底部移动端 Tab）
+    // 导航激活（侧栏）
     document.querySelectorAll(".side-item").forEach(el => el.classList.remove("is-active"));
     const navBtn = document.querySelector(`.side-item[data-goto="${route}"]`);
     if (navBtn) navBtn.classList.add("is-active");
-    // 移动端底部 Tab
+
+    // 移动端底部三 Tab 激活映射：
+    //   发现 Tab ← discover / charts / search
+    //   歌曲 Tab ← library / artists / albums / folders / playlist-detail
+    //   我的 Tab ← profile / favorites / history / ai / playlist-ai
     document.querySelectorAll(".m-nav-item").forEach(el => el.classList.remove("is-active"));
-    const mobileRoute = route === "favorites" || route === "history" || route === "library" || route === "artists" || route === "albums" || route === "folders"
-      ? "profile"
-      : (route === "charts" ? "discover" : route);
-    const mBtn = document.querySelector(`.m-nav-item[data-goto="${mobileRoute}"]`);
+    const DISCOVER_ROUTES = ["discover", "charts", "search"];
+    const LIB_ROUTES = ["library", "artists", "albums", "folders", "playlist-detail"];
+    const MINE_ROUTES = ["profile", "favorites", "history", "ai", "playlist-ai", "admin"];
+    let mobileTab = "discover"; // 默认
+    if (route === "home") mobileTab = "discover"; // 首页归属发现 Tab
+    else if (DISCOVER_ROUTES.includes(route)) mobileTab = "discover";
+    else if (LIB_ROUTES.includes(route)) mobileTab = "library";
+    else if (MINE_ROUTES.includes(route)) mobileTab = "profile";
+    const mBtn = document.querySelector(`.m-nav-item[data-goto="${mobileTab}"]`);
     if (mBtn) mBtn.classList.add("is-active");
 
     // 子页面：个人中心 tabs
@@ -169,23 +175,25 @@ const App = (() => {
   }
 
   function bindCards(root) {
-    // 歌单卡
+    // 歌单卡 → 打开歌单详情
     root.querySelectorAll(".playlist-card[data-playlist]").forEach(c => {
       c.addEventListener("click", () => navigate("playlist-detail", c.dataset.playlist));
     });
+    // 专辑卡 → 立即播放（从本地曲库匹配）
     root.querySelectorAll(".playlist-card[data-album]").forEach(c => {
       c.addEventListener("click", () => {
-        // 直接把所有该专辑的歌曲加入播放队列
         const tracks = pickN(TRACKS, 8, c.dataset.album.charCodeAt(2) % 5);
         Player.playAll(tracks);
       });
     });
+    // 歌手卡 → 立即播放
     root.querySelectorAll(".artist-card").forEach(c => {
       c.addEventListener("click", () => {
         const tracks = pickN(TRACKS, 10, c.dataset.artist.charCodeAt(1) % 5);
         Player.playAll(tracks);
       });
     });
+    // 文件夹 → 立即播放
     root.querySelectorAll(".folder-item").forEach(c => {
       c.addEventListener("click", () => {
         const tracks = pickN(TRACKS, 10, c.dataset.folder.charCodeAt(5) % 5);
@@ -193,35 +201,20 @@ const App = (() => {
       });
     });
 
-    // track-row 点击 → 播放
+    // track-row 单击（更自然） → 播放
     root.querySelectorAll(".track-row[data-track]").forEach(row => {
-      row.addEventListener("dblclick", () => {
+      row.addEventListener("click", () => {
         const id = row.dataset.track;
         const t = TRACKS.find(x => x.id === id);
         if (t) Player.playAll([t]);
       });
     });
 
-    // 页面内 "立即播放"
-    root.querySelectorAll("[data-go-playlist]").forEach(btn => {
+    // 页面内 "立即播放" / "播放整张歌单"
+    root.querySelectorAll("[data-go-playlist], [data-play-playlist]").forEach(btn => {
       btn.addEventListener("click", () => {
-        const id = btn.dataset.goPlaylist;
-        const p = PLAYLISTS.find(pl => pl.id === id) || PLAYLISTS[0];
-        const tracks = pickN(TRACKS, Math.min(p.tracks, 12), id.charCodeAt(1) % 5);
-        Player.playAll(tracks);
-      });
-    });
-    root.querySelectorAll("[data-play-playlist]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.playPlaylist;
-        const p = PLAYLISTS.find(pl => pl.id === id) || PLAYLISTS[0];
-        const tracks = pickN(TRACKS, Math.min(p.tracks, 12), id.charCodeAt(1) % 5);
-        Player.playAll(tracks);
-      });
-    });
-    root.querySelectorAll(".ph-play").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tracks = pickN(TRACKS, 12, 0);
+        const id = (btn.dataset.goPlaylist || btn.dataset.playPlaylist);
+        const tracks = pickN(TRACKS, 10, id.charCodeAt(1) % 5);
         Player.playAll(tracks);
       });
     });
@@ -230,9 +223,6 @@ const App = (() => {
     const gen = root.querySelector("#btn-gen");
     if (gen) gen.addEventListener("click", () => {
       Player.playAll(pickN(TRACKS, 10, 2));
-      // 滚动到顶部的小反馈
-      const b = document.querySelector(".ai-card-cta#btn-gen");
-      if (b) { b.innerHTML = "✓ 已生成 10 首歌单"; setTimeout(() => { b.innerHTML = "⟐ 让 AI 生成歌单"; }, 1500); }
     });
   }
 

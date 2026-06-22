@@ -20,13 +20,13 @@ const Pages = (() => {
           <div class="track-cover-sm" style="--c1:${c1};--c2:${c2}"></div>
           <div class="track-meta">
             <div class="track-name">${track.title}</div>
-            <div class="track-name-sub">${track.artist}</div>
+            <div class="track-name-sub">${track.artist} · ${track.album}</div>
           </div>
         </div>
-        <div class="track-col">${track.album}</div>
+        <div class="track-col">${track.genre}</div>
         ${showLocal
           ? `<div><span class="local-status ${isLocal ? "ok" : "no"}">${isLocal ? "✓ 已收录" : "✗ 本地暂无"}</span></div>`
-          : `<div class="track-col">${track.genre}</div>`}
+          : ``}
         <div class="track-dur">${fmtDur(track.dur)}</div>
         <div class="track-act">
           <button class="icon-btn" title="收藏">♡</button>
@@ -90,19 +90,24 @@ const Pages = (() => {
       </div>`;
   }
 
-  // ---- 页面：首页 ----
+  // ---- 页面：首页（精简版） ----
   function home() {
     return `
       <section class="page-section">
-        <div class="banner" id="banner">
+        <div class="page-intro-hero" style="padding:10px 4px 20px;margin-bottom:18px">
+          <h2 style="margin-top:4px">在自己的曲库里，听见自己。</h2>
+          <p>私有化部署 · Web / APP 互通 · 全链路实时同步</p>
+        </div>
+
+        <div class="banner" id="banner" style="height:160px;margin-bottom:24px">
           ${BANNERS.map((b, i) => `
-            <div class="banner-slide ${i === 0 ? "is-active" : ""}" style="--b-c1:${b.c1};--b-c2:${b.c2}">
+            <div class="banner-slide ${i === 0 ? "is-active" : ""}" style="padding:26px 32px;--b-c1:${b.c1};--b-c2:${b.c2}">
               <span class="banner-tag ${b.isAI ? "is-ai" : ""}">${b.tag}</span>
-              <div class="banner-title" style="margin-top:12px">${b.title}</div>
-              <div class="banner-sub">${b.sub}</div>
-              <button class="banner-cta" data-go-playlist="p0${i}">▶ 立即播放</button>
+              <div class="banner-title" style="font-size:20px;margin-top:8px">${b.title}</div>
+              <div class="banner-sub" style="font-size:13px;color:var(--text-2);max-width:520px">${b.sub}</div>
+              <button class="banner-cta" style="margin-top:2px" data-go-playlist="p0${i}">▶ 立即播放</button>
             </div>`).join("")}
-          <div class="banner-dots" style="position:absolute;right:32px;bottom:24px">
+          <div class="banner-dots" style="position:absolute;right:24px;bottom:14px">
             ${BANNERS.map((_, i) => `<span class="banner-dot ${i === 0 ? "is-active" : ""}" data-banner-idx="${i}"></span>`).join("")}
           </div>
         </div>
@@ -110,93 +115,67 @@ const Pages = (() => {
 
       <section class="page-section">
         <div class="section-head">
-          <h3 class="section-title">今日 AI 推荐歌单</h3>
+          <h3 class="section-title">今日推荐</h3>
           <button class="section-more" data-goto="ai">查看全部 AI 功能 →</button>
         </div>
-        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
-          ${pickN(PLAYLISTS.filter(p => p.type === "ai" || p.type === "official"), 4, 0).map(playlistCard).join("")}
+        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+          ${PLAYLISTS.slice(0, 6).map(playlistCard).join("")}
         </div>
       </section>
 
       <section class="page-section">
         <div class="section-head">
           <h3 class="section-title">最近播放</h3>
-          <span class="section-more">${TRACKS.slice(0, 6).length} 首 · 已同步到 APP</span>
+          <button class="section-more" data-goto="library">浏览全部 1284 首 →</button>
         </div>
         <div class="track-list">
-          ${pickN(TRACKS, 6, 2).map((t, i) => rowFor(t, i)).join("")}
+          ${pickN(TRACKS, 5, 2).map((t, i) => rowFor(t, i)).join("")}
         </div>
       </section>
 
       <section class="page-section">
         <div class="section-head">
-          <h3 class="section-title">新上架歌曲</h3>
-          <button class="section-more" data-goto="library">查看曲库 →</button>
-        </div>
-        <div class="track-list">
-          ${pickN(TRACKS, 6, 5).map((t, i) => rowFor(t, i)).join("")}
-        </div>
-      </section>
-
-      <section class="page-section">
-        <div class="section-head">
-          <h3 class="section-title">全网热榜预览</h3>
+          <h3 class="section-title">全网热榜</h3>
           <button class="section-more" data-goto="charts">完整榜单 →</button>
         </div>
         <div class="track-list">
           ${CHARTS.slice(0, 5).map(chartRow).join("")}
         </div>
       </section>
-
-      <section class="page-section">
-        <div class="ai-card">
-          <div>
-            <div class="ph-type" style="color:var(--accent)">AI · 智能推荐中心</div>
-            <h3 class="ai-card-title" style="margin-top:8px">让 AI 为你做一张歌单</h3>
-            <p class="ai-card-sub">描述你想听的场景、情绪或用途，AI 会从你的本地曲库中匹配最合适的歌曲。</p>
-            <div class="ai-card-tags">
-              <span class="ai-card-tag">#深夜独酌</span>
-              <span class="ai-card-tag">#雨天专注</span>
-              <span class="ai-card-tag">#清晨咖啡</span>
-              <span class="ai-card-tag">#通勤低干扰</span>
-              <span class="ai-card-tag">#周末微醺摇滚</span>
-            </div>
-            <div style="margin-top:22px">
-              <button class="ai-card-cta" data-goto="ai">进入 AI 推荐中心 →</button>
-            </div>
-          </div>
-          <div class="ai-card-visual"></div>
-        </div>
-      </section>
     `;
   }
 
-  // ---- 页面：发现 ----
+  // ---- 页面：歌单广场 ----
   function discover() {
     return `
       <section class="page-section">
-        <h3 class="section-title">全网热歌榜</h3>
-        <p class="section-more" style="margin-top:-22px;margin-bottom:14px">每首歌联动本地曲库 · 标注收录状态</p>
-        <div class="track-list">
-          ${CHARTS.slice(0, 12).map(chartRow).join("")}
+        <div class="page-intro-hero" style="padding:10px 4px 20px;margin-bottom:18px">
+          <h2 style="margin-top:4px">歌单广场</h2>
+          <p>AI 每日推荐 + 官方精选，点击任意歌单即可开始播放</p>
         </div>
-      </section>
 
-      <section class="page-section">
-        <h3 class="section-title">歌单广场</h3>
-        <div class="card-grid">
+        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:22px">
           ${PLAYLISTS.map(playlistCard).join("")}
         </div>
       </section>
 
       <section class="page-section">
-        <h3 class="section-title">全维度曲库浏览</h3>
-        <div class="filter-bar" style="flex-wrap:wrap">
-          ${["全部","风格 · 电子","风格 · 民谣","场景 · 专注","场景 · 运动","语种 · 中文","语种 · 英文"].map((f, i) =>
-            `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${f}</span>`).join("")}
+        <div class="section-head">
+          <h3 class="section-title">新歌速递</h3>
+          <button class="section-more" data-goto="artists">全部歌手 →</button>
+        </div>
+        <div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">
+          ${ARTISTS.slice(0, 6).map(artistCard).join("")}
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-head">
+          <h3 class="section-title">本地曲库最新</h3>
+          <button class="section-more" data-goto="library">查看全部 ${TRACKS.length} 首 →</button>
         </div>
         <div class="track-list">
-          ${pickN(TRACKS, 8, 3).map((t, i) => rowFor(t, i)).join("")}
+          ${pickN(TRACKS, 6, 0).map((t, i) => rowFor(t, i)).join("")}
         </div>
       </section>
     `;
@@ -264,24 +243,53 @@ const Pages = (() => {
     `;
   }
 
-  // ---- 页面：曲库（全部歌曲） ----
+  // ---- 页面：全部歌曲 ----
   function library() {
+    const genres = ["全部", "电子 / Synthwave", "独立民谣", "氛围 / Post-rock", "爵士 / Lounge", "Dream Pop", "乡村摇滚", "Post-Hardcore"];
     return `
       <section class="page-section">
-        <div class="page-intro-hero">
-          <h2>曲库 · ${TRACKS.length} 首歌曲</h2>
-          <p>所有歌曲均来自本地挂载目录 · 元数据已自动补全 · 管理员扫描管理</p>
+        <div class="page-intro-hero" style="padding:10px 4px 18px;margin-bottom:14px">
+          <h2 style="margin-top:4px">全部歌曲 <em style="font-size:14px;color:var(--text-3);font-weight:400;margin-left:8px">${TRACKS.length} 首 · 本地已收录</em></h2>
+          <p>点击任意行即可播放 · 所有曲目来自本地 /music 目录 · 支持搜索、筛选、排序</p>
         </div>
-        <div class="filter-bar">
-          ${["全部","电子","民谣","爵士","Post-rock","乡村摇滚","Dream Pop","Indie Rock"].map((f, i) =>
-            `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${f}</span>`).join("")}
+
+        <div class="filter-bar" style="margin-bottom:16px">
+          ${genres.map((g, i) => `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${g}</span>`).join("")}
           <span class="filter-spacer"></span>
-          <span class="filter-pill">按标题 A→Z</span>
+          <span class="filter-pill is-active">默认排序</span>
           <span class="filter-pill">按添加时间</span>
           <span class="filter-pill">按播放次数</span>
         </div>
-        <div class="track-list">
+
+        <div class="track-list" style="border:1px solid var(--border);border-radius:var(--r-12);overflow:hidden">
           ${TRACKS.map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ---- 页面：全网热榜 ----
+  function chartsPage() {
+    return `
+      <section class="page-section">
+        <div class="page-intro-hero" style="padding:10px 4px 18px;margin-bottom:14px">
+          <h2 style="margin-top:4px">全网热榜</h2>
+          <p>从主流音乐平台同步 · 标注「已收录」/「未收录」· 点击播放或标记想要</p>
+        </div>
+
+        <div class="track-list" style="border:1px solid var(--border);border-radius:var(--r-12);overflow:hidden">
+          ${CHARTS.map(chartRow).join("")}
+        </div>
+
+        <div class="ai-card" style="margin-top:24px;grid-template-columns:1fr;padding:20px 24px">
+          <div>
+            <h3 class="ai-card-title" style="font-size:16px;margin-top:0">与你的曲库匹配情况</h3>
+            <p class="ai-card-sub" style="margin-top:6px">热榜 ${CHARTS.length} 首中，本地已收录 ${CHARTS.filter(c => c.local).length} 首，未收录 ${CHARTS.filter(c => !c.local).length} 首</p>
+            <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+              <span class="ai-card-tag">✓ 已收录 ${Math.round(CHARTS.filter(c => c.local).length / CHARTS.length * 100)}%</span>
+              <span class="ai-card-tag">热门艺人：${ARTISTS.slice(0, 4).map(a => a.name).join("、")}</span>
+            </div>
+          </div>
         </div>
       </section>
     `;
@@ -867,8 +875,9 @@ const Pages = (() => {
   }
 
   return {
-    home, discover, aiCenter, library, artists, albums, folders,
-    profile, profileColtab, playlistDetail, searchResults,
+    home, discover: discover, charts: chartsPage, aiCenter: aiCenter,
+    library, artists, albums, folders,
+    profile, profileColtab: profileColtab, playlistDetail: playlistDetail, searchResults,
     admin, admDashboard, admLibraryMgmt, admUsers, admAIConfig,
     admNetwork, admBackup, admMetadata, admOps, admPlaylistEdit,
   };

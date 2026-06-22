@@ -264,15 +264,15 @@
 .sidebar {
   background: var(--bg-1);
   border-right: 1px solid var(--border);
-  padding: 14px 10px;
+  padding: 12px 8px;
   overflow-y: auto;
 }
-.side-section { margin-bottom: 18px; }
+.side-section { margin-bottom: 14px; }
 .side-title {
   padding: 0 10px 6px;
   font-size: var(--fs-11);
   color: var(--text-dim);
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
 }
 .side-title-row {
@@ -289,7 +289,7 @@
 .side-item {
   display: flex; align-items: center; gap: 10px;
   width: 100%;
-  padding: 9px 12px;
+  padding: 8px 12px;
   font-size: var(--fs-13);
   color: var(--text-2);
   border-radius: var(--r-8);
@@ -300,6 +300,19 @@
 .side-item.is-active {
   background: var(--accent-soft);
   color: var(--accent);
+  font-weight: 500;
+}
+.side-item-accent {
+  background: linear-gradient(90deg, rgba(159,122,234,.18), transparent);
+  border: 1px solid rgba(159,122,234,.25);
+  color: var(--text-1);
+}
+.side-item-accent em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-3);
+  margin-left: auto;
+  opacity: .8;
 }
 .ai-dot {
   width: 6px; height: 6px; border-radius: 999px;
@@ -312,25 +325,26 @@
 /* ---- 内容页 ---- */
 .page-body {
   overflow-y: auto;
-  padding: 28px 36px 40px;
+  padding: 22px 28px 32px;
   position: relative;
 }
-.page-section { margin-bottom: 36px; }
+.page-section { margin-bottom: 28px; }
 .page-head {
   display: flex; align-items: flex-end; justify-content: space-between;
   margin-bottom: 20px;
 }
-.page-title { font-size: var(--fs-28); font-weight: 700; letter-spacing: .3px; }
+.page-title { font-size: var(--fs-24); font-weight: 700; letter-spacing: .3px; }
 .page-subtitle { margin-top: 6px; color: var(--text-3); font-size: var(--fs-13); }
 .section-head {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .section-title {
-  font-size: var(--fs-18); font-weight: 600;
+  font-size: var(--fs-16); font-weight: 600;
 }
 .section-more {
   font-size: var(--fs-12); color: var(--text-3);
+  padding: 4px 0;
 }
 .section-more:hover { color: var(--accent); }
 
