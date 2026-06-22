@@ -10,6 +10,7 @@
 
 const App = (() => {
   const $ = (id) => document.getElementById(id);
+  let historyStack = [];
   const state = {
     logged: false,
     role: "guest", // user | admin | guest
@@ -67,7 +68,7 @@ const App = (() => {
     document.querySelectorAll(sel).forEach(el => el.classList.remove("is-active"));
   }
 
-  function navigate(route, payload) {
+  function navigate(route, payload, skipHistory = false) {
     state.current = route;
     const container = $("page-body");
     if (!container) return;
@@ -85,6 +86,25 @@ const App = (() => {
             <button class="ai-card-cta" onclick="App.logout()">以管理员重新登录</button>
           </section>`;
         return;
+      }
+    }
+
+    // 记录历史（不重复推送连续相同路由）
+    if (!skipHistory) {
+      if (historyStack.length === 0 || historyStack[historyStack.length - 1] !== route) {
+        historyStack.push(route);
+      }
+    }
+
+    // 显示/隐藏移动端返回按钮
+    const backBtn = document.getElementById('mobile-back-btn');
+    if (backBtn) {
+      if (route === 'home') {
+        backBtn.classList.remove('is-visible');
+        backBtn.style.display = 'none';
+      } else {
+        backBtn.classList.add('is-visible');
+        backBtn.style.display = 'inline-flex';
       }
     }
 
@@ -136,6 +156,16 @@ const App = (() => {
           <button class="ai-card-cta" style="margin-top:16px" onclick="App.navigate('${route}')">重试</button>
         </div>`;
     });
+  }
+
+  function goBack() {
+    if (historyStack.length <= 1) {
+      navigate('home');
+      return;
+    }
+    historyStack.pop(); // 移除当前页面
+    const prev = historyStack.pop(); // 获取上一个页面
+    navigate(prev, null, true); // true = 不添加到历史
   }
 
   /** 所有需要在异步渲染完成后执行的绑定逻辑 */
@@ -536,6 +566,10 @@ const App = (() => {
       if (!item) return;
       const route = item.dataset.goto;
       const payload = item.dataset.payload || undefined;
+      // 从移动端底部 tab 或侧边栏导航时，清空历史栈
+      if (item.classList.contains("m-nav-item") || item.classList.contains("side-item")) {
+        historyStack = [route];
+      }
       navigate(route, payload);
     });
 
@@ -575,6 +609,7 @@ const App = (() => {
     login,
     logout,
     navigate,
+    goBack,
     getState: () => state,
   };
 })();

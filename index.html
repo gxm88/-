@@ -78,6 +78,9 @@
     <!-- 顶部栏 -->
     <header class="topbar">
       <div class="topbar-left">
+        <button class="mobile-back-btn" id="mobile-back-btn" title="返回" onclick="App.goBack()" style="display:none">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
         <div class="brand-mark small">
           <div class="brand-dot"></div>
           <span class="brand-text">MuseBox</span>
@@ -285,7 +288,7 @@
 
     <!-- 全屏播放器 -->
     <div class="fullscreen-player" id="fullscreen-player">
-      <button class="fs-close" id="btn-fs-close" title="收起">×</button>
+      <button class="fs-close" id="btn-fs-close" title="收起" onclick="Player.closeFullscreen()">×</button>
       <div class="fs-body">
         <!-- 封面区域 -->
         <div class="fs-left" id="fs-cover-area">

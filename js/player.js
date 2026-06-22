@@ -460,6 +460,12 @@ const Player = (() => {
     }
   }
 
+  function closeFullscreen() {
+    const fs = $("fullscreen-player");
+    if (fs) fs.classList.remove("is-open");
+    _fsDragBound = false; // 下次打开时重新绑定进度条事件
+  }
+
   function setFSTab(tab) {
     state.fsTab = tab;
     renderFullscreen();
@@ -594,6 +600,38 @@ const Player = (() => {
     const fsLyricsArea = $("fs-lyrics-area");
     if (fsCoverArea) fsCoverArea.style.display = state.fsTab === "cover" ? "" : "none";
     if (fsLyricsArea) fsLyricsArea.style.display = state.fsTab === "lyrics" ? "" : "none";
+
+    // 全屏进度条交互（在全屏打开后绑定，确保 pointer-events: auto 生效）
+    bindFSProgress();
+  }
+
+  // 全屏进度条拖拽 + 点击跳转（在 renderFullscreen 中调用，确保全屏已打开）
+  let _fsDragBound = false;
+  function bindFSProgress() {
+    const fsBar = $("fs-progress-bar");
+    if (!fsBar || _fsDragBound) return;
+    _fsDragBound = true;
+
+    // 点击跳转
+    fsBar.addEventListener("click", (e) => {
+      const rect = fsBar.getBoundingClientRect();
+      const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      seekTo(p);
+    });
+
+    // 拖拽跳转
+    let dragging = false;
+    const updateProgress = (clientX) => {
+      const rect = fsBar.getBoundingClientRect();
+      const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      seekTo(p);
+    };
+    fsBar.addEventListener("mousedown", (e) => { e.preventDefault(); dragging = true; updateProgress(e.clientX); });
+    document.addEventListener("mousemove", (e) => { if (dragging) { e.preventDefault(); updateProgress(e.clientX); } });
+    document.addEventListener("mouseup", () => { dragging = false; });
+    fsBar.addEventListener("touchstart", (e) => { e.preventDefault(); dragging = true; updateProgress(e.touches[0].clientX); }, { passive: false });
+    document.addEventListener("touchmove", (e) => { if (dragging) { e.preventDefault(); updateProgress(e.touches[0].clientX); } }, { passive: false });
+    document.addEventListener("touchend", () => { dragging = false; });
   }
 
   function renderTrackBar() {
@@ -842,7 +880,7 @@ const Player = (() => {
     const fsc = $("btn-fs-close");
     if (fsc && !fsc.dataset.bound) {
       fsc.dataset.bound = "1";
-      fsc.addEventListener("click", () => $("fullscreen-player").classList.remove("is-open"));
+      fsc.addEventListener("click", closeFullscreen);
     }
 
     // 收藏按钮
@@ -895,24 +933,6 @@ const Player = (() => {
       document.addEventListener("mousemove", (e) => { if (dragging) updateProgress(e.clientX); });
       document.addEventListener("mouseup", () => { dragging = false; });
       bar.addEventListener("touchstart", (e) => { dragging = true; updateProgress(e.touches[0].clientX); });
-      document.addEventListener("touchmove", (e) => { if (dragging) updateProgress(e.touches[0].clientX); });
-      document.addEventListener("touchend", () => { dragging = false; });
-    }
-
-    // 全屏进度条拖拽
-    const fsBar = $("fs-progress-bar");
-    if (fsBar && !fsBar.dataset.bound) {
-      fsBar.dataset.bound = "1";
-      let dragging = false;
-      const updateProgress = (clientX) => {
-        const rect = fsBar.getBoundingClientRect();
-        const p = (clientX - rect.left) / rect.width;
-        seekTo(p);
-      };
-      fsBar.addEventListener("mousedown", (e) => { dragging = true; updateProgress(e.clientX); });
-      document.addEventListener("mousemove", (e) => { if (dragging) updateProgress(e.clientX); });
-      document.addEventListener("mouseup", () => { dragging = false; });
-      fsBar.addEventListener("touchstart", (e) => { dragging = true; updateProgress(e.touches[0].clientX); });
       document.addEventListener("touchmove", (e) => { if (dragging) updateProgress(e.touches[0].clientX); });
       document.addEventListener("touchend", () => { dragging = false; });
     }
@@ -1193,7 +1213,7 @@ const Player = (() => {
     cyclePlayMode, setPlayMode,
     toggleMute, setVolume, setAppVolume,
     toggleSleepPanel, startSleepTimer, cancelSleepTimer,
-    toggleFullscreen, setFSTab,
+    toggleFullscreen, setFSTab, closeFullscreen,
     toggleEQPanel, applyEQPreset,
     getState: () => state,
     getEQPresets: () => EQ_PRESETS,
