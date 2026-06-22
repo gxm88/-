@@ -260,14 +260,19 @@ const App = (() => {
       toggle.dataset.bound = "1";
 
       const targetSelector = toggle.dataset.target;
-      // 在同一个 section / group 内查找目标容器
-      const section = toggle.closest(".page-section, .search-group, #coltab-body");
-      if (!section) return;
-      const target = section.querySelector(targetSelector);
+      let target;
+      if (targetSelector.startsWith("#")) {
+        // id 选择器 → 直接在 document 中查找（最精确）
+        target = document.querySelector(targetSelector);
+      } else {
+        // class 选择器 → 优先在最近的 section / group 内查找
+        const section = toggle.closest(".page-section, .search-group, #coltab-body");
+        target = section ? section.querySelector(targetSelector) : document.querySelector(targetSelector);
+      }
       if (!target) return;
 
       // 恢复已保存的视图偏好
-      const key = "view_" + (section.dataset.viewKey || targetSelector.replace(/[^a-zA-Z0-9]/g, "_"));
+      const key = "view_" + targetSelector.replace(/[^a-zA-Z0-9]/g, "_");
       const saved = localStorage.getItem(key);
       if (saved === "grid") {
         target.classList.add("is-grid");
