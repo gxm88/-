@@ -159,61 +159,78 @@ const API = (() => {
     // 歌曲
     getTracks: (params = {}) => {
       const qs = new URLSearchParams(params).toString();
-      return request("GET", `/tracks${qs ? "?" + qs : ""}`);
+      const path = `/tracks${qs ? "?" + qs : ""}`;
+      return request("GET", path).catch(() => mock("GET", path));
     },
-    getTrack: (id) => request("GET", `/tracks/${id}`),
+    getTrack: (id) => {
+      const path = `/tracks/${id}`;
+      return request("GET", path).catch(() => mock("GET", path));
+    },
 
     // 歌单
     getPlaylists: (params = {}) => {
       const qs = new URLSearchParams(params).toString();
-      return request("GET", `/playlists${qs ? "?" + qs : ""}`);
+      const path = `/playlists${qs ? "?" + qs : ""}`;
+      return request("GET", path).catch(() => mock("GET", path));
     },
-    getPlaylist: (id) => request("GET", `/playlists/${id}`),
-    createPlaylist: (data) => request("POST", "/playlists", data),
-    updatePlaylist: (id, data) => request("PUT", `/playlists/${id}`, data),
-    deletePlaylist: (id) => request("DELETE", `/playlists/${id}`),
+    getPlaylist: (id) => {
+      const path = `/playlists/${id}`;
+      return request("GET", path).catch(() => mock("GET", path));
+    },
+    createPlaylist: (data) => request("POST", "/playlists", data).catch(() => mock("POST", "/playlists", data)),
+    updatePlaylist: (id, data) => request("PUT", `/playlists/${id}`, data).catch(() => mock("PUT", `/playlists/${id}`, data)),
+    deletePlaylist: (id) => request("DELETE", `/playlists/${id}`).catch(() => mock("DELETE", `/playlists/${id}`)),
 
     // 榜单
-    getCharts: () => request("GET", "/charts"),
-    getLocalCharts: () => request("GET", "/charts/local"),
+    getCharts: () => request("GET", "/charts").catch(() => mock("GET", "/charts")),
+    getLocalCharts: () => request("GET", "/charts/local").catch(() => mock("GET", "/charts/local")),
 
     // 认证
-    login: (credentials) => request("POST", "/auth/login", credentials),
-    logout: () => request("POST", "/auth/logout"),
-    getMe: () => request("GET", "/auth/me"),
+    login: (credentials) => request("POST", "/auth/login", credentials).catch(() => mock("POST", "/auth/login", credentials)),
+    logout: () => request("POST", "/auth/logout").catch(() => ({ ok: true })),
+    getMe: () => request("GET", "/auth/me").catch(() => mock("GET", "/auth/me")),
 
     // 用户
-    getProfile: () => request("GET", "/user/profile"),
-    getFavorites: () => request("GET", "/user/favorites"),
-    getHistory: () => request("GET", "/user/history"),
-    addFavorite: (trackId) => request("POST", `/user/favorites/${trackId}`),
-    removeFavorite: (trackId) => request("DELETE", `/user/favorites/${trackId}`),
-    addHistory: (trackId) => request("POST", `/user/history/${trackId}`),
+    getProfile: () => request("GET", "/user/profile").catch(() => mock("GET", "/user/profile")),
+    getFavorites: () => request("GET", "/user/favorites").catch(() => mock("GET", "/user/favorites")),
+    getHistory: () => request("GET", "/user/history").catch(() => mock("GET", "/user/history")),
+    addFavorite: (trackId) => request("POST", `/user/favorites/${trackId}`).catch(() => ({ ok: true })),
+    removeFavorite: (trackId) => request("DELETE", `/user/favorites/${trackId}`).catch(() => ({ ok: true })),
+    addHistory: (trackId) => request("POST", `/user/history/${trackId}`).catch(() => ({ ok: true })),
 
     // AI
-    getDailyRecommend: () => request("GET", "/ai/daily"),
-    generateNLP: (prompt) => request("POST", "/ai/nlp", { prompt }),
-    getAIPlaylists: () => request("GET", "/ai/playlists"),
-    getSimilar: () => request("GET", "/ai/similar"),
+    getDailyRecommend: () => request("GET", "/ai/daily").catch(() => mock("GET", "/ai/daily")),
+    generateNLP: (prompt) => request("POST", "/ai/nlp", { prompt }).catch(() => mock("POST", "/ai/nlp", { prompt })),
+    getAIPlaylists: () => request("GET", "/ai/playlists").catch(() => mock("GET", "/ai/playlists")),
+    getSimilar: () => request("GET", "/ai/similar").catch(() => mock("GET", "/ai/similar")),
 
     // 搜索
-    search: (q) => request("GET", `/search?q=${encodeURIComponent(q)}`),
+    search: (q) => request("GET", `/search?q=${encodeURIComponent(q)}`).catch(() => mock("GET", `/search?q=${encodeURIComponent(q)}`)),
 
     // 管理后台
-    getAdminStats: () => request("GET", "/admin/stats"),
-    getAdminUsers: () => request("GET", "/admin/users"),
-    triggerScan: () => request("POST", "/admin/scan"),
-    getAdminLogs: () => request("GET", "/admin/logs"),
-    updateAIConfig: (config) => request("PUT", "/admin/ai-config", config),
-    getNetworkStatus: () => request("GET", "/admin/network"),
+    getAdminStats: () => request("GET", "/admin/stats").catch(() => mock("GET", "/admin/stats")),
+    getAdminUsers: () => request("GET", "/admin/users").catch(() => mock("GET", "/admin/users")),
+    triggerScan: () => request("POST", "/admin/scan").catch(() => mock("POST", "/admin/scan")),
+    getAdminLogs: () => request("GET", "/admin/logs").catch(() => mock("GET", "/admin/logs")),
+    updateAIConfig: (config) => request("PUT", "/admin/ai-config", config).catch(() => mock("PUT", "/admin/ai-config", config)),
+    getNetworkStatus: () => request("GET", "/admin/network").catch(() => mock("GET", "/admin/network")),
 
     // 歌手 / 专辑 / 文件夹
-    getArtists: () => request("GET", "/artists"),
-    getArtist: (id) => request("GET", `/artists/${id}`),
-    getAlbums: () => request("GET", "/albums"),
-    getAlbum: (id) => request("GET", `/albums/${id}`),
-    getFolders: () => request("GET", "/folders"),
-    getFolder: (path) => request("GET", `/folders/${encodeURIComponent(path)}`),
+    getArtists: () => request("GET", "/artists").catch(() => mock("GET", "/artists")),
+    getArtist: (id) => {
+      const path = `/artists/${id}`;
+      return request("GET", path).catch(() => mock("GET", path));
+    },
+    getAlbums: () => request("GET", "/albums").catch(() => mock("GET", "/albums")),
+    getAlbum: (id) => {
+      const path = `/albums/${id}`;
+      return request("GET", path).catch(() => mock("GET", path));
+    },
+    getFolders: () => request("GET", "/folders").catch(() => mock("GET", "/folders")),
+    getFolder: (path) => {
+      const p = `/folders/${encodeURIComponent(path)}`;
+      return request("GET", p).catch(() => mock("GET", p));
+    },
 
     // 配置
     getBaseURL: () => BASE,
