@@ -373,14 +373,15 @@
   z-index: 110;
   height: 64px;
 }
-.player-track { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.player-track { display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer; }
 .player-cover {
   width: 48px; height: 48px;
   background: linear-gradient(135deg, #4a4a7a, #1e1e33);
   border-radius: var(--r-8);
   flex-shrink: 0;
+  cursor: pointer;
 }
-.player-meta { min-width: 0; }
+.player-meta { min-width: 0; cursor: pointer; }
 .player-title {
   font-size: var(--fs-13);
   color: var(--text-1);
@@ -535,52 +536,6 @@
 
 /* EQ 按钮激活态 */
 #btn-eq.is-active { color: var(--accent); }
-
-/* 全屏播放器 */
-.fullscreen-player {
-  position: fixed; inset: 0;
-  background:
-    radial-gradient(800px 600px at 20% 20%, rgba(159,122,234,0.25), transparent 60%),
-    linear-gradient(180deg, rgba(10,10,18,0.96), rgba(10,10,18,0.98));
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-  padding: 60px 80px;
-  opacity: 0; pointer-events: none;
-  transition: opacity var(--t-slow);
-  z-index: 300;
-  backdrop-filter: blur(20px);
-}
-.fullscreen-player.is-open { opacity: 1; pointer-events: auto; }
-.fs-close {
-  position: absolute; top: 24px; right: 28px;
-  color: var(--text-2); font-size: 30px; line-height: 1;
-}
-.fs-left { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 28px; }
-.fs-cover {
-  width: 360px; height: 360px;
-  border-radius: var(--r-20);
-  background: linear-gradient(135deg, #6a5acd, #2b1d4d);
-  box-shadow: var(--shadow-accent);
-}
-.fs-title { font-size: var(--fs-40); font-weight: 700; }
-.fs-sub { margin-top: 8px; color: var(--text-2); font-size: var(--fs-16); }
-.fs-stats { margin-top: 16px; font-size: var(--fs-12); color: var(--text-3); display: flex; gap: 18px; }
-.ai-tag strong { color: var(--accent); font-weight: 600; }
-.fs-right {
-  display: flex; align-items: center;
-  overflow: hidden;
-  overflow-y: auto;
-}
-.lyrics {
-  font-size: var(--fs-18);
-  line-height: 2.2;
-  color: var(--text-2);
-  mask-image: linear-gradient(180deg, transparent, #000 20%, #000 80%, transparent);
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 20%, #000 80%, transparent);
-}
-.lyric-line { transition: color var(--t); }
-.lyric-line.is-current { color: var(--text-1); font-size: var(--fs-22); }
 
 /* ---- 音量控制面板 ---- */
 .volume-panel {
