@@ -873,39 +873,50 @@
   .is-desktop-only { display: none; }
   
   .player-bar {
-    grid-template-columns: auto 1fr auto;
-    padding: 8px 10px 8px 8px;
-    gap: 10px;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px 6px 6px;
+    gap: 8px;
     position: fixed;
     bottom: 72px;    /* 上方是播放器，下方是三 Tab */
     left: 12px; right: 12px;
-    height: auto;
+    height: 52px;
     border-radius: 999px;     /* 两头半圆形胶囊 */
     border-top: none;
     border: 1px solid var(--border);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
     background: var(--bg-1);
   }
-  .player-track { min-width: 0; gap: 10px; }
+  .player-track { 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    min-width: 0;
+    flex: 1;
+  }
   .player-track #btn-fav { display: none; }  /* 胶囊内不显示：收藏按钮移到右侧 */
   .player-cover {
-    width: 46px; height: 46px;
+    width: 40px; height: 40px;
     border-radius: 50%;        /* 圆形专辑封面 */
+    flex-shrink: 0;
   }
-  .player-title { font-size: 13px; }
-  .player-sub { font-size: 11px; }
-  /* 中间控制：小屏隐藏中间播放控制区，只保留右侧一行 */
+  .player-meta { min-width: 0; flex: 1; }
+  .player-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player-sub { display: none; }  /* 胶囊内隐藏副标题 */
+  /* 中间控制：小屏隐藏进度条区域 */
   .player-center { display: none; }
-  /* 右侧：小屏显示为一行图标，胶囊右侧 */
+  /* 右侧：一行图标按钮 */
   .player-right {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     align-items: center;
     justify-content: flex-end;
+    flex-shrink: 0;
   }
   .player-right .icon-btn {
     width: 32px; height: 32px;
+    border-radius: 50%;
   }
   .player-right #btn-play-m {
     width: 36px; height: 36px;
