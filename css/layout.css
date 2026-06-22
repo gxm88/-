@@ -307,12 +307,10 @@
   color: var(--accent);
   font-weight: 500;
 }
+/* 玻璃边框效果只在选中时显示 */
 .side-item-accent {
-  background: linear-gradient(90deg, rgba(159,122,234,.18), transparent);
-  border: 1px solid rgba(159,122,234,.25);
   color: var(--text-1);
 }
-/* 选中时合并玻璃边框效果 */
 .side-item-accent.is-active {
   background: var(--accent-soft);
   border: 1px solid rgba(159,122,234,.4);
