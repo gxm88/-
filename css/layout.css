@@ -691,9 +691,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 60px 24px 40px;
+  padding: 20px 24px 40px;
   opacity: 0; pointer-events: none;
   transition: opacity var(--t-slow);
   z-index: 300;
@@ -701,46 +699,80 @@
 }
 .fullscreen-player.is-open { opacity: 1; pointer-events: auto; }
 .fs-close {
-  position: absolute; top: 24px; right: 28px;
-  color: var(--text-2); font-size: 30px; line-height: 1; cursor: pointer;
-  transition: color var(--t-fast); z-index: 10;
+  position: absolute; top: 16px; right: 20px;
+  color: var(--text-2); font-size: 28px; line-height: 1; cursor: pointer;
+  transition: color var(--t-fast); z-index: 10; background: none; border: none;
 }
 .fs-close:hover { color: var(--text-1); }
+
+/* 顶部：封面/歌词切换 */
+.fs-tab-btns {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+.fs-tab-btn {
+  padding: 8px 20px; border-radius: 999px;
+  background: transparent; color: var(--text-3);
+  font-size: var(--fs-13); border: 1px solid transparent;
+  transition: all var(--t-fast); cursor: pointer;
+}
+.fs-tab-btn:hover { color: var(--text-1); }
+.fs-tab-btn.is-active { 
+  background: var(--accent-soft); 
+  color: var(--accent); 
+  border: 1px solid rgba(159,122,234,.4);
+}
+
+/* 中间：封面/歌词区域 */
 .fs-body {
-  display: flex; align-items: center; gap: 60px;
-  max-width: 900px; width: 100%;
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: 40px; width: 100%; max-width: 800px; min-height: 200px;
 }
 .fs-left {
-  display: flex; flex-direction: column; align-items: center; gap: 20px;
-  flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
 }
 .fs-cover {
-  width: 300px; height: 300px;
-  border-radius: var(--r-20);
+  width: 240px; height: 240px;
+  border-radius: var(--r-16);
   background: linear-gradient(135deg, #6a5acd, #2b1d4d);
-  box-shadow: 0 20px 60px rgba(159,122,234,0.35);
+  box-shadow: 0 16px 48px rgba(159,122,234,0.3);
 }
 .fs-meta { text-align: center; }
-.fs-title { font-size: var(--fs-28); font-weight: 700; }
-.fs-sub { margin-top: 6px; color: var(--text-2); font-size: var(--fs-14); }
-.fs-stats { margin-top: 12px; font-size: var(--fs-12); color: var(--text-3); display: flex; gap: 18px; justify-content: center; }
+.fs-title { font-size: var(--fs-22); font-weight: 700; }
+.fs-sub { margin-top: 4px; color: var(--text-2); font-size: var(--fs-13); }
+.fs-stats { margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); display: flex; gap: 12px; justify-content: center; }
 .ai-tag strong { color: var(--accent); font-weight: 600; }
 .fs-right {
   flex: 1; min-width: 0; max-height: 50vh; overflow-y: auto;
   display: flex; align-items: center; justify-content: center;
 }
 .lyrics {
-  font-size: var(--fs-18); line-height: 2.2; color: var(--text-2);
+  font-size: var(--fs-16); line-height: 2; color: var(--text-2);
   mask-image: linear-gradient(180deg, transparent, #000 20%, #000 80%, transparent);
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 20%, #000 80%, transparent);
 }
 .lyric-line { transition: all var(--t); }
-.lyric-line.is-current { color: var(--text-1); font-size: var(--fs-22); }
+.lyric-line.is-current { color: var(--text-1); font-size: var(--fs-18); }
 
-/* 全屏内进度条 */
+/* 工具栏：播放模式/均衡器/睡眠/音量（在进度条上方横排） */
+.fs-utils {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px; width: 100%; max-width: 600px;
+  justify-content: center;
+}
+.fs-util-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--bg-2); color: var(--text-3);
+  font-size: var(--fs-12); border: 1px solid var(--border);
+  transition: all var(--t-fast); cursor: pointer;
+}
+.fs-util-btn:hover { color: var(--text-1); border-color: var(--text-3); }
+.fs-util-btn.is-active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+/* 进度条 */
 .fs-progress-wrap {
   display: flex; align-items: center; gap: 12px;
-  width: 100%; max-width: 600px;
+  width: 100%; max-width: 600px; margin-bottom: 20px;
 }
 .fs-t { font-size: var(--fs-11); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .fs-progress-bar {
@@ -751,12 +783,12 @@
   width: 0; transition: width .3s linear;
 }
 
-/* 全屏内播放控制 */
+/* 底部：播放控制（居中） */
 .fs-controls {
-  display: flex; align-items: center; gap: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 20px;
 }
 .fs-ctrl-btn {
-  width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   color: var(--text-2); cursor: pointer; transition: all var(--t-fast);
 }
 .fs-ctrl-btn:hover { color: var(--text-1); background: var(--bg-2); }
@@ -765,40 +797,6 @@
   background: var(--text-1); color: var(--bg-0); cursor: pointer; transition: transform var(--t-fast);
 }
 .fs-play-btn:hover { transform: scale(1.06); }
-
-/* 封面/歌词切换 */
-.fs-tab-btns {
-  display: inline-flex; gap: 4px; padding: 4px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 999px;
-}
-.fs-tab-btn {
-  padding: 6px 16px; border-radius: 999px; font-size: 13px; color: var(--text-3); cursor: pointer; transition: all var(--t-fast);
-}
-.fs-tab-btn:hover { color: var(--text-1); }
-.fs-tab-btn.is-active { background: var(--bg-3); color: var(--accent); }
-
-/* 全屏内工具行（播放模式/均衡器/睡眠/音量） */
-.fs-utils {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 12px;
-}
-.fs-util-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  color: var(--text-3);
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all var(--t-fast);
-}
-.fs-util-btn:hover { color: var(--text-1); border-color: var(--text-3); }
-.fs-util-btn.is-active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 
 /* ---- 通用显隐工具（默认显示；移动端才隐藏） ---- */
 .hide-mobile { display: inline-flex; }

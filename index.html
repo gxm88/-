@@ -287,9 +287,16 @@
 
     <!-- 全屏播放器 -->
     <div class="fullscreen-player" id="fullscreen-player">
-      <button class="fs-close" id="btn-fs-close" title="收起" onclick="Player.closeFullscreen()">×</button>
+      <button class="fs-close" id="btn-fs-close" title="收起">×</button>
+      
+      <!-- 顶部：封面/歌词切换 -->
+      <div class="fs-tab-btns" id="fs-tab-btns">
+        <button class="fs-tab-btn is-active" data-fs-tab="cover">封面</button>
+        <button class="fs-tab-btn" data-fs-tab="lyrics">歌词</button>
+      </div>
+      
+      <!-- 中间：封面/歌词区域 -->
       <div class="fs-body">
-        <!-- 封面区域 -->
         <div class="fs-left" id="fs-cover-area">
           <div class="fs-cover" id="fs-cover"></div>
           <div class="fs-meta">
@@ -301,14 +308,34 @@
             </div>
           </div>
         </div>
-        <!-- 歌词区域 -->
         <div class="fs-right" id="fs-lyrics-area" style="display:none">
           <div class="lyrics" id="lyrics">
             <div class="lyric-line">选择一首歌开始聆听</div>
           </div>
         </div>
       </div>
-      <!-- 全屏内进度条 -->
+      
+      <!-- 工具栏：播放模式/均衡器/睡眠/音量 -->
+      <div class="fs-utils" id="fs-utils">
+        <button class="fs-util-btn" id="fs-btn-mode" title="播放模式">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4M3 11l-4-4 4-4M17 22l4-4-4-4M3 11l4 4-4 4M7 11h10"></path></svg>
+          <span>顺序</span>
+        </button>
+        <button class="fs-util-btn" id="fs-btn-eq" title="均衡器">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16M8 8v8M12 6v12M16 10v4M20 2v20"></path></svg>
+          <span>均衡器</span>
+        </button>
+        <button class="fs-util-btn" id="fs-btn-sleep" title="睡眠定时">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <span>睡眠</span>
+        </button>
+        <button class="fs-util-btn" id="fs-btn-volume" title="音量">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a5 5 0 0 1 0 6M19 7a8 8 0 0 1 0 10"></path></svg>
+          <span>100%</span>
+        </button>
+      </div>
+      
+      <!-- 进度条 -->
       <div class="fs-progress-wrap">
         <span class="fs-t" id="fs-t-cur">00:00</span>
         <div class="fs-progress-bar" id="fs-progress-bar">
@@ -316,10 +343,19 @@
         </div>
         <span class="fs-t" id="fs-t-dur">00:00</span>
       </div>
-      <!-- 全屏内控制 -->
-      <div class="fs-controls" id="fs-controls"></div>
-      <!-- 封面/歌词切换 -->
-      <div class="fs-tab-btns" id="fs-tab-btns"></div>
+      
+      <!-- 底部：播放控制 -->
+      <div class="fs-controls" id="fs-controls">
+        <button class="fs-ctrl-btn" id="fs-btn-prev" title="上一首">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9.5 12l10-6v12z"></path></svg>
+        </button>
+        <button class="fs-play-btn" id="fs-btn-play" title="播放/暂停">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+        </button>
+        <button class="fs-ctrl-btn" id="fs-btn-next" title="下一首">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4.5 18l10-6-10-6z"></path></svg>
+        </button>
+      </div>
     </div>
   </section>
 
