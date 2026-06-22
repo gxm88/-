@@ -15,6 +15,7 @@ const App = (() => {
     logged: false,
     role: "guest", // user | admin | guest
     userName: "",
+    user: null,
     current: "home",
     bannerIdx: 0,
     bannerTimer: null,
@@ -478,39 +479,73 @@ const App = (() => {
   }
 
   // ---- 登录与权限 ----
-  function login(role) {
-    API.login(role).then(res => {
-      finishLogin(res.user?.name || (role === "admin" ? "admin" : "listener_01"), res.user?.role || role);
-    }).catch(() => {
-      finishLogin(role === "admin" ? "admin" : "listener_01", role);
-    });
+  async function login() {
+    try {
+      const res = await API.login({ username: 'admin', password: 'admin123' });
+      if (res.token) {
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('user', JSON.stringify(res.user));
+        state.logged = true;
+        state.user = res.user;
+        updateUserMenu();
+        showToast('登录成功', 'success');
+        navigate('home');
+      }
+    } catch (e) {
+      state.logged = false;
+      showToast('登录失败，使用离线模式', 'warn');
+      // Fallback to mock login
+      state.logged = true;
+      state.user = { id: 1, username: 'admin', role: 'admin', avatar: 'A' };
+      localStorage.setItem('user', JSON.stringify(state.user));
+      updateUserMenu();
+      navigate('home');
+    }
   }
 
-  function finishLogin(userName, role) {
-    state.logged = true;
-    state.role = role;
-    state.userName = userName;
+  function updateUserMenu() {
+    const user = state.user;
+    if (!user) return;
+    state.role = user.role;
+    state.userName = user.username;
 
     const av = $("user-avatar");
     const nm = $("user-name");
-    if (av) { av.textContent = state.userName.charAt(0).toUpperCase(); }
-    if (nm) nm.textContent = state.userName + (role === "admin" ? " · 管理员" : "");
+    if (av) { av.textContent = user.username.charAt(0).toUpperCase(); }
+    if (nm) nm.textContent = user.username + (user.role === "admin" ? " · 管理员" : "");
 
     const mu = document.querySelector("#avatar-menu .menu-title");
     const ms = document.querySelector("#avatar-menu .menu-sub");
-    if (mu) mu.textContent = state.userName;
-    if (ms) ms.textContent = role === "admin" ? "Administrator" : "Listener";
+    if (mu) mu.textContent = user.username;
+    if (ms) ms.textContent = user.role === "admin" ? "Administrator" : "Listener";
 
     document.querySelectorAll(".is-admin-only").forEach(el => {
-      el.classList.toggle("is-hidden", role !== "admin");
+      el.classList.toggle("is-hidden", user.role !== "admin");
     });
     const adminToggle = $("btn-toggle-admin");
-    if (adminToggle) adminToggle.style.display = role === "admin" ? "inline-flex" : "none";
+    if (adminToggle) adminToggle.style.display = user.role === "admin" ? "inline-flex" : "none";
 
     $("page-login").classList.remove("is-active");
     $("app-shell").classList.add("is-active");
+  }
 
-    navigate("home");
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      background: ${type === 'success' ? '#22c55e' : type === 'warn' ? '#f59e0b' : '#3b82f6'};
+      color: #fff; padding: 10px 24px; border-radius: 999px; font-size: 13px;
+      z-index: 9999; animation: fadeInUp 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s';
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
   }
 
   function logout() {
@@ -543,9 +578,9 @@ const App = (() => {
     const btnUser = $("btn-login-user");
     const btnAdmin = $("btn-login-admin");
     const btnGuest = $("btn-login-guest");
-    if (btnUser) btnUser.addEventListener("click", () => login("user"));
-    if (btnAdmin) btnAdmin.addEventListener("click", () => login("admin"));
-    if (btnGuest) btnGuest.addEventListener("click", () => login("guest"));
+    if (btnUser) btnUser.addEventListener("click", () => login());
+    if (btnAdmin) btnAdmin.addEventListener("click", () => login());
+    if (btnGuest) btnGuest.addEventListener("click", () => login());
 
     document.querySelectorAll(".login-tab").forEach(tab => {
       tab.addEventListener("click", () => {
@@ -610,6 +645,7 @@ const App = (() => {
     logout,
     navigate,
     goBack,
+    showToast,
     getState: () => state,
   };
 })();

@@ -919,21 +919,30 @@ const Player = (() => {
       });
     }
 
-    // 进度条拖拽
+    // 进度条拖拽 + 点击跳转
     const bar = $("progress-bar");
     if (bar && !bar.dataset.bound) {
       bar.dataset.bound = "1";
+
+      // 点击跳转
+      bar.addEventListener("click", (e) => {
+        const rect = bar.getBoundingClientRect();
+        const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        seekTo(p);
+      });
+
+      // 拖拽跳转
       let dragging = false;
       const updateProgress = (clientX) => {
         const rect = bar.getBoundingClientRect();
-        const p = (clientX - rect.left) / rect.width;
+        const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
         seekTo(p);
       };
-      bar.addEventListener("mousedown", (e) => { dragging = true; updateProgress(e.clientX); });
-      document.addEventListener("mousemove", (e) => { if (dragging) updateProgress(e.clientX); });
+      bar.addEventListener("mousedown", (e) => { e.preventDefault(); dragging = true; updateProgress(e.clientX); });
+      document.addEventListener("mousemove", (e) => { if (dragging) { e.preventDefault(); updateProgress(e.clientX); } });
       document.addEventListener("mouseup", () => { dragging = false; });
-      bar.addEventListener("touchstart", (e) => { dragging = true; updateProgress(e.touches[0].clientX); });
-      document.addEventListener("touchmove", (e) => { if (dragging) updateProgress(e.touches[0].clientX); });
+      bar.addEventListener("touchstart", (e) => { e.preventDefault(); dragging = true; updateProgress(e.touches[0].clientX); }, { passive: false });
+      document.addEventListener("touchmove", (e) => { if (dragging) { e.preventDefault(); updateProgress(e.touches[0].clientX); } }, { passive: false });
       document.addEventListener("touchend", () => { dragging = false; });
     }
 

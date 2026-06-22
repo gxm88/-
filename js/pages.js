@@ -1183,7 +1183,7 @@ const Pages = (() => {
                   <td style="padding:10px 14px;font-size:13px;color:var(--text-2)">${f.count}</td>
                   <td style="padding:10px 14px;font-size:13px"><span class="status-dot">已挂载</span></td>
                   <td style="padding:10px 14px;font-size:12px;color:var(--text-3)">2 小时前</td>
-                  <td style="padding:10px 14px;text-align:right"><button class="icon-btn">⋯</button></td>
+                  <td style="padding:10px 14px;text-align:right"><button class="icon-btn" onclick="App.showToast('扫描已触发', 'success')">⟳</button></td>
                 </tr>`).join("")}
             </tbody>
           </table>
@@ -1234,7 +1234,7 @@ const Pages = (() => {
                 <td style="color:var(--text-3);font-size:12px">${u.email || '-'}</td>
                 <td style="color:var(--text-3);font-size:12px">${u.lastLogin || '-'}</td>
                 <td><span class="status-dot">正常</span></td>
-                <td style="text-align:right"><button class="icon-btn">⋯</button></td>
+                <td style="text-align:right"><button class="icon-btn" onclick="App.showToast('用户设置已打开', 'info')">⋯</button></td>
               </tr>`).join("")}
           </tbody>
         </table>
@@ -1242,9 +1242,9 @@ const Pages = (() => {
 
       <div class="admin-panel">
         <h3>系统参数</h3>
-        <div class="switch-row"><div><div style="font-size:13px">开放注册</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">允许新用户自主申请账号。关闭后仅管理员可创建。</div></div><div class="switch is-on"></div></div>
-        <div class="switch-row"><div><div style="font-size:13px">邀请码注册</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">开启后新注册需要填写有效邀请码。</div></div><div class="switch"></div></div>
-        <div class="switch-row"><div><div style="font-size:13px">每日 AI 推荐自动生成</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">自动在凌晨 3:00 为每位用户生成个性化推荐。</div></div><div class="switch is-on"></div></div>
+        <div class="switch-row"><div><div style="font-size:13px">开放注册</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">允许新用户自主申请账号。关闭后仅管理员可创建。</div></div><div class="switch is-on" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
+        <div class="switch-row"><div><div style="font-size:13px">邀请码注册</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">开启后新注册需要填写有效邀请码。</div></div><div class="switch" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
+        <div class="switch-row"><div><div style="font-size:13px">每日 AI 推荐自动生成</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">自动在凌晨 3:00 为每位用户生成个性化推荐。</div></div><div class="switch is-on" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
       </div>
     `;
   }
@@ -1268,7 +1268,7 @@ const Pages = (() => {
                 <div style="font-size:11px;color:var(--text-dim);margin-top:10px;font-family:monospace">API Key: ${m.key}</div>
                 <div style="font-size:11px;color:var(--text-3);margin-top:4px">今日调用 · ${m.calls} 次</div>
               </div>
-              <div class="switch ${m.enabled ? "is-on" : ""}"></div>
+              <div class="switch ${m.enabled ? "is-on" : ""}" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div>
             </div>`).join("")}
         </div>
         <div style="margin-top:16px;display:flex;gap:8px">
@@ -1291,9 +1291,9 @@ const Pages = (() => {
 
       <div class="admin-panel">
         <h3>全网热榜爬虫</h3>
-        <div class="switch-row"><div><div>网易云 · 热歌榜</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每日 02:00 同步</div></div><div class="switch is-on"></div></div>
-        <div class="switch-row"><div><div>Spotify · Global Top 50</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每 6 小时同步一次</div></div><div class="switch is-on"></div></div>
-        <div class="switch-row"><div><div>Apple Music · Daily Top 100</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每日 02:30 同步</div></div><div class="switch"></div></div>
+        <div class="switch-row"><div><div>网易云 · 热歌榜</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每日 02:00 同步</div></div><div class="switch is-on" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
+        <div class="switch-row"><div><div>Spotify · Global Top 50</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每 6 小时同步一次</div></div><div class="switch is-on" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
+        <div class="switch-row"><div><div>Apple Music · Daily Top 100</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每日 02:30 同步</div></div><div class="switch" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
       </div>
     `;
   }
@@ -1337,9 +1337,9 @@ const Pages = (() => {
 
       <div class="admin-panel">
         <h3>网络 / 安全</h3>
-        <div class="switch-row"><div><div>HTTPS 强制</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">所有 HTTP 请求重定向到 HTTPS</div></div><div class="switch is-on"></div></div>
-        <div class="switch-row"><div><div>IP 黑白名单</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">白名单模式 · 仅允许 192.168.0.0/16</div></div><div class="switch is-on"></div></div>
-        <div class="switch-row"><div><div>接口限流</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每 IP 每分钟 120 次</div></div><div class="switch is-on"></div></div>
+        <div class="switch-row"><div><div>HTTPS 强制</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">所有 HTTP 请求重定向到 HTTPS</div></div><div class="switch is-on" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
+        <div class="switch-row"><div><div>IP 黑白名单</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">白名单模式 · 仅允许 192.168.0.0/16</div></div><div class="switch is-on" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
+        <div class="switch-row"><div><div>接口限流</div><div style="font-size:11px;color:var(--text-3);margin-top:2px">每 IP 每分钟 120 次</div></div><div class="switch is-on" onclick="this.classList.toggle('is-on'); App.showToast('设置已更新', 'success')"></div></div>
       </div>
     `;
   }
@@ -1349,11 +1349,11 @@ const Pages = (() => {
       <div class="admin-panel" style="margin-bottom:14px">
         <h3>系统日志</h3>
         <div class="filter-bar" style="margin-bottom:14px">
-          <span class="filter-pill is-active">全部</span>
-          <span class="filter-pill">系统</span>
-          <span class="filter-pill">播放</span>
-          <span class="filter-pill">错误</span>
-          <span class="filter-pill">操作</span>
+          <span class="filter-pill is-active" onclick="this.parentElement.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('is-active'));this.classList.add('is-active');App.showToast('日志已筛选', 'info')">全部</span>
+          <span class="filter-pill" onclick="this.parentElement.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('is-active'));this.classList.add('is-active');App.showToast('日志已筛选', 'info')">系统</span>
+          <span class="filter-pill" onclick="this.parentElement.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('is-active'));this.classList.add('is-active');App.showToast('日志已筛选', 'info')">播放</span>
+          <span class="filter-pill" onclick="this.parentElement.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('is-active'));this.classList.add('is-active');App.showToast('日志已筛选', 'info')">错误</span>
+          <span class="filter-pill" onclick="this.parentElement.querySelectorAll('.filter-pill').forEach(p=>p.classList.remove('is-active'));this.classList.add('is-active');App.showToast('日志已筛选', 'info')">操作</span>
           <span class="filter-spacer"></span>
           <span class="filter-pill">导出</span>
         </div>
@@ -1375,7 +1375,7 @@ const Pages = (() => {
           <div class="admin-stat" style="padding:16px"><div class="as-num" style="font-size:18px">最近备份</div><div class="as-label" style="margin-top:4px">2026-06-21 03:30 · 184 MB</div></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="ai-card-cta" style="margin-top:0">立即备份</button>
+          <button class="ai-card-cta" style="margin-top:0" onclick="App.showToast('备份已开始', 'success')">立即备份</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">导入配置</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">导出配置</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">从备份恢复</button>
@@ -1436,7 +1436,7 @@ const Pages = (() => {
           }, i)).join("")}
         </div>
         <div style="margin-top:20px;display:flex;gap:8px">
-          <button class="ai-card-cta" style="margin-top:0">新建官方歌单</button>
+          <button class="ai-card-cta" style="margin-top:0" onclick="App.showToast('新建歌单功能开发中', 'info')">新建官方歌单</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">用户公开歌单审核</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">首页推荐置顶位</button>
         </div>

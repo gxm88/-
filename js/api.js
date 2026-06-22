@@ -11,27 +11,27 @@ const API = (() => {
 
   // ---- 通用请求 ----
   async function request(method, path, body = null) {
-    const url = BASE + path;
-    const opts = {
-      method,
-      headers: { "Content-Type": "application/json" },
-    };
-    if (body) opts.body = JSON.stringify(body);
-
-    const controller = new AbortController();
-    opts.signal = controller.signal;
-    const timer = setTimeout(() => controller.abort(), TIMEOUT);
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
-      const res = await fetch(url, opts);
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch(path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(err.message || `HTTP ${res.status}`);
+      }
       return await res.json();
-    } catch (err) {
-      clearTimeout(timer);
-      // 降级：使用 mock 数据
-      console.warn(`[API] ${method} ${path} 失败，降级为 mock:`, err.message);
-      return mock(method, path, body);
+    } catch (e) {
+      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+        throw new Error('请求超时');
+      }
+      throw e;
     }
   }
 
@@ -178,7 +178,7 @@ const API = (() => {
     getLocalCharts: () => request("GET", "/charts/local"),
 
     // 认证
-    login: (role) => request("POST", "/auth/login", { role }),
+    login: (credentials) => request("POST", "/auth/login", credentials),
     logout: () => request("POST", "/auth/logout"),
     getMe: () => request("GET", "/auth/me"),
 

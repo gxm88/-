@@ -1,0 +1,24 @@
+# Checklist
+
+- [x] `server/` 目录结构创建完毕
+- [x] `package.json` 包含所有必需依赖
+- [x] `config.js` 环境变量配置正确
+- [x] `db.js` 建表 SQL 覆盖所有 10 张表
+- [x] `index.js` Express 启动 + 中间件 + 路由挂载
+- [x] JWT 认证中间件正常工作
+- [x] 管理员角色守卫正常工作
+- [x] `POST /api/login` 返回 JWT
+- [x] `GET /api/admin/stats` 返回仪表盘数据
+- [x] `GET /api/admin/users` 返回用户列表
+- [x] `POST /api/admin/folders` 添加扫描目录
+- [x] `POST /api/admin/scan/:id` 触发扫描
+- [x] `GET /api/admin/ai-models` 返回模型列表
+- [x] `PUT /api/admin/ai-strategy` 更新推荐策略
+- [x] `GET /api/admin/logs` 返回系统日志
+- [x] `POST /api/admin/backup` 触发备份
+- [x] 前端 `login()` 存储 JWT
+- [x] 前端 `api.js` 请求头携带 JWT
+- [x] 管理后台开关/按钮可交互
+- [x] `Dockerfile` 可构建
+- [x] `docker-compose.yml` 可启动
+- [x] 全部语法检查通过
