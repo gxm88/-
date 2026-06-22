@@ -37,6 +37,7 @@ const App = (() => {
     history: () => Pages.profile(),
     search: (q) => Pages.searchResults(q),
     "playlist-detail": (id) => Pages.playlistDetail(id),
+    "album-detail": (id) => Pages.albumDetail(id),
     admin: () => Pages.admin(),
   };
 
@@ -80,7 +81,7 @@ const App = (() => {
     //   我的 Tab ← profile / favorites / history / ai / playlist-ai
     document.querySelectorAll(".m-nav-item").forEach(el => el.classList.remove("is-active"));
     const DISCOVER_ROUTES = ["discover", "charts", "search"];
-    const LIB_ROUTES = ["library", "artists", "albums", "folders", "playlist-detail"];
+    const LIB_ROUTES = ["library", "artists", "albums", "folders", "playlist-detail", "album-detail"];
     const MINE_ROUTES = ["profile", "favorites", "history", "ai", "playlist-ai", "ai-daily", "ai-nlp", "admin"];
     let mobileTab = "discover"; // 默认
     if (route === "home") mobileTab = "discover"; // 首页归属发现 Tab
@@ -187,11 +188,11 @@ const App = (() => {
         if (id) navigate("playlist-detail", id);
       });
     });
-    // 媒体块 (专辑) → 立即播放
+    // 媒体块 (专辑) → 专辑详情
     root.querySelectorAll(".media-block[data-album]").forEach(c => {
       c.addEventListener("click", () => {
-        const tracks = pickN(TRACKS, 8, c.dataset.album.charCodeAt(2) % 5);
-        Player.playAll(tracks);
+        const id = c.dataset.album;
+        if (id) navigate("album-detail", id);
       });
     });
     // 歌手圆环 → 立即播放
@@ -383,9 +384,19 @@ const App = (() => {
 
   // ---- 登录与权限 ----
   function login(role) {
+    // 尝试调用后端 API，失败时降级为本地模拟
+    API.login(role).then(res => {
+      finishLogin(res.user?.name || (role === "admin" ? "admin" : "listener_01"), res.user?.role || role);
+    }).catch(() => {
+      // API 不可用，降级
+      finishLogin(role === "admin" ? "admin" : "listener_01", role);
+    });
+  }
+
+  function finishLogin(userName, role) {
     state.logged = true;
     state.role = role;
-    state.userName = role === "admin" ? "admin" : "listener_01";
+    state.userName = userName;
 
     // 更新顶栏
     const av = $("user-avatar");
@@ -411,16 +422,35 @@ const App = (() => {
     $("app-shell").classList.add("is-active");
 
     // 首次进入首页
-    navigate(role === "admin" ? "home" : "home");
+    navigate("home");
   }
 
   function logout() {
+    API.logout().catch(() => {});
     state.logged = false; state.role = "guest";
     $("page-login").classList.add("is-active");
     $("app-shell").classList.remove("is-active");
   }
 
   // ---- 绑定 ----
+  function renderSidePlaylists() {
+    const list = $("side-playlist-list");
+    if (!list) return;
+    API.getPlaylists({ type: "user" }).then(res => {
+      const pls = res.data || PLAYLISTS.filter(p => p.type === "user");
+      list.innerHTML = pls.map(p => `
+        <button class="side-item" data-goto="playlist-detail" data-payload="${p.id}">
+          <span>${p.title}</span>
+        </button>`).join("");
+    }).catch(() => {
+      const pls = PLAYLISTS.filter(p => p.type === "user");
+      list.innerHTML = pls.map(p => `
+        <button class="side-item" data-goto="playlist-detail" data-payload="${p.id}">
+          <span>${p.title}</span>
+        </button>`).join("");
+    });
+  }
+
   function init() {
     // 登录按钮
     const btnUser = $("btn-login-user");
@@ -451,7 +481,8 @@ const App = (() => {
       const item = e.target.closest("[data-goto]");
       if (!item) return;
       const route = item.dataset.goto;
-      navigate(route);
+      const payload = item.dataset.payload || undefined;
+      navigate(route, payload);
     });
 
     // 退出登录
@@ -461,6 +492,23 @@ const App = (() => {
     // 管理员入口（顶栏图标）
     const ta = $("btn-toggle-admin");
     if (ta) ta.addEventListener("click", () => navigate("admin"));
+
+    // 新建歌单按钮
+    const btnNewPl = $("btn-new-playlist");
+    if (btnNewPl) btnNewPl.addEventListener("click", () => {
+      const name = prompt("请输入歌单名称：", "我的新歌单");
+      if (!name || !name.trim()) return;
+      const desc = prompt("请输入歌单描述（可选）：", "");
+      API.createPlaylist({ title: name.trim(), desc: desc || "新歌单", type: "user" }).then(() => {
+        renderSidePlaylists();
+      }).catch(() => {
+        // 降级：直接创建本地 mock
+        renderSidePlaylists();
+      });
+    });
+
+    // 侧栏动态歌单列表
+    renderSidePlaylists();
 
     // 搜索快捷键
     document.addEventListener("keydown", (e) => {

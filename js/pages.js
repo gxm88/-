@@ -630,6 +630,43 @@ const Pages = (() => {
   }
 
   // ============================================================
+  // 页面：专辑详情
+  // ============================================================
+  function albumDetail(id) {
+    const a = ALBUMS.find(al => al.id === id) || ALBUMS[0];
+    const [c1, c2] = colorOf(id ? id.charCodeAt(1) : 1);
+    const tracks = TRACKS.filter(t => t.album === a.title);
+    return `
+      ${pageHero(a.title, "", { brand: "专辑 · " + a.year })}
+      <section class="page-section anim-fade-up">
+        <div class="playlist-hero">
+          <div class="cover cover-lg" style="--c1:${c1};--c2:${c2}"></div>
+          <div>
+            <div class="ph-type">专辑</div>
+            <h2 class="ph-title">${a.title}</h2>
+            <div class="ph-meta">
+              <span>${a.artist}</span>
+              <span>${a.year} 年</span>
+              <span>${a.tracks} 首</span>
+            </div>
+            <div class="ph-ctas">
+              <button class="ph-play" data-play-playlist="${a.id}">▶ 播放全部</button>
+              <button class="ph-ghost">♡ 收藏</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-head">
+          <h3 class="section-title">曲目列表 · ${tracks.length} 首</h3>
+          ${viewToggleBtn("#album-detail-tracks")}
+        </div>
+        <div class="track-list" id="album-detail-tracks">
+          ${tracks.length > 0 ? tracks.map((t, i) => rowFor(t, i)).join("") : pickN(TRACKS, a.tracks, 0).map((t, i) => rowFor(t, i)).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  // ============================================================
   // 页面：文件夹
   // ============================================================
   function folders() {
@@ -1253,7 +1290,7 @@ const Pages = (() => {
   return {
     home, discover: discover, charts: chartsPage, aiCenter: aiCenter,
     aiDaily, aiNLP, aiPlaylists,
-    library, artists, albums, folders,
+    library, artists, albums, albumDetail, folders,
     profile, profileColtab: profileColtab, playlistDetail: playlistDetail, searchResults,
     viewToggleBtn, rowFor,
     admin, admDashboard, admLibraryMgmt, admUsers, admAIConfig,
