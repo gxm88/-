@@ -833,6 +833,16 @@ const Player = (() => {
       bpm.dataset.bound = "1";
       bpm.addEventListener("click", togglePlay);
     }
+    const bprevM = $("btn-prev-m");
+    if (bprevM && !bprevM.dataset.bound) {
+      bprevM.dataset.bound = "1";
+      bprevM.addEventListener("click", prev);
+    }
+    const bnextM = $("btn-next-m");
+    if (bnextM && !bnextM.dataset.bound) {
+      bnextM.dataset.bound = "1";
+      bnextM.addEventListener("click", next);
+    }
     const bqm = $("btn-queue-m");
     if (bqm && !bqm.dataset.bound) {
       bqm.dataset.bound = "1";
