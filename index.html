@@ -119,7 +119,7 @@
       </div>
     </header>
 
-    <!-- 移动端底部三 Tab 导航（与架构文档一致：发现 / 歌曲 / 我的） -->
+    <!-- 移动端底部三 Tab 导航 -->
     <nav class="mobile-bottom-nav" aria-label="主导航">
       <button class="m-nav-item" data-goto="discover">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3"></circle></svg>
@@ -224,9 +224,7 @@
 
       <div class="player-center">
         <div class="player-controls">
-          <button class="icon-btn" title="播放模式">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4M3 11v-2a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
-          </button>
+          <button class="icon-btn" id="btn-play-mode" title="顺序播放">↻</button>
           <button class="icon-btn" id="btn-prev" title="上一首">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9.5 12l10-6v12z"></path></svg>
           </button>
@@ -265,6 +263,9 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a5 5 0 0 1 0 6M19 7a8 8 0 0 1 0 10"></path></svg>
         </button>
         <div class="vol-bar is-desktop-only"><div class="vol-fill" id="vol-fill"></div></div>
+        <button class="icon-btn is-desktop-only" id="btn-sleep" title="睡眠定时">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
         <button class="icon-btn is-desktop-only" id="btn-expand" title="全屏播放器">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>
         </button>
@@ -274,37 +275,59 @@
       <div class="queue-panel" id="queue-panel">
         <div class="queue-head">
           <span>播放队列</span>
-          <button class="icon-btn" id="btn-close-queue">×</button>
+          <div class="queue-head-right">
+            <button class="queue-action-btn" id="btn-clear-queue" title="一键清空">清空</button>
+            <button class="icon-btn" id="btn-close-queue">×</button>
+          </div>
         </div>
         <div class="queue-list" id="queue-list"></div>
       </div>
     </footer>
 
-    <!-- EQ 均衡器面板 (独立于 player-bar 之外) -->
+    <!-- EQ 均衡器面板 -->
     <div class="eq-panel" id="eq-panel"></div>
 
-    <!-- 全屏歌词/播放器 -->
+    <!-- 音量控制面板 -->
+    <div class="volume-panel" id="volume-panel"></div>
+
+    <!-- 睡眠定时面板 -->
+    <div class="sleep-panel" id="sleep-panel"></div>
+
+    <!-- 全屏播放器 -->
     <div class="fullscreen-player" id="fullscreen-player">
       <button class="fs-close" id="btn-fs-close" title="收起">×</button>
-      <div class="fs-left">
-        <div class="fs-cover" id="fs-cover"></div>
-        <div class="fs-meta">
-          <div class="fs-title" id="fs-title">未在播放</div>
-          <div class="fs-sub" id="fs-sub">—</div>
-          <div class="fs-stats">
-            <span>已听 <strong id="fs-plays">0</strong> 次</span>
-            <span class="ai-tag">AI 推荐匹配度 <strong id="fs-match">—</strong></span>
+      <div class="fs-body">
+        <!-- 封面区域 -->
+        <div class="fs-left" id="fs-cover-area">
+          <div class="fs-cover" id="fs-cover"></div>
+          <div class="fs-meta">
+            <div class="fs-title" id="fs-title">未在播放</div>
+            <div class="fs-sub" id="fs-sub">—</div>
+            <div class="fs-stats">
+              <span>已听 <strong id="fs-plays">0</strong> 次</span>
+              <span class="ai-tag">AI 推荐匹配度 <strong id="fs-match">—</strong></span>
+            </div>
+          </div>
+        </div>
+        <!-- 歌词区域 -->
+        <div class="fs-right" id="fs-lyrics-area" style="display:none">
+          <div class="lyrics" id="lyrics">
+            <div class="lyric-line">选择一首歌开始聆听</div>
           </div>
         </div>
       </div>
-      <div class="fs-right">
-        <div class="lyrics" id="lyrics">
-          <div class="lyric-line">[00:00] 选择一首歌开始聆听</div>
-          <div class="lyric-line">[00:04] 播放状态将在 Web / APP 实时同步</div>
-          <div class="lyric-line">[00:08] 双端队列与播放进度保持一致</div>
-          <div class="lyric-line">[00:12] 播放数据将进入 AI 模型用于个性化推荐</div>
+      <!-- 全屏内进度条 -->
+      <div class="fs-progress-wrap">
+        <span class="fs-t" id="fs-t-cur">00:00</span>
+        <div class="fs-progress-bar" id="fs-progress-bar">
+          <div class="fs-progress-fill" id="fs-progress-fill"></div>
         </div>
+        <span class="fs-t" id="fs-t-dur">00:00</span>
       </div>
+      <!-- 全屏内控制 -->
+      <div class="fs-controls" id="fs-controls"></div>
+      <!-- 封面/歌词切换 -->
+      <div class="fs-tab-btns" id="fs-tab-btns"></div>
     </div>
   </section>
 
