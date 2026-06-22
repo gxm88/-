@@ -363,25 +363,25 @@
 .player-bar {
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
   background: var(--bg-1);
   border-top: 1px solid var(--border);
   z-index: 110;
   height: 64px;
 }
-.player-track { display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer; }
+.player-track { display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer; flex-shrink: 0; }
 .player-cover {
-  width: 48px; height: 48px;
+  width: 44px; height: 44px;
   background: linear-gradient(135deg, #4a4a7a, #1e1e33);
   border-radius: var(--r-8);
   flex-shrink: 0;
   cursor: pointer;
 }
-.player-meta { min-width: 0; cursor: pointer; }
+.player-meta { min-width: 0; cursor: pointer; max-width: 180px; }
 .player-title {
   font-size: var(--fs-13);
   color: var(--text-1);
@@ -390,45 +390,60 @@
 .player-sub {
   font-size: var(--fs-11); color: var(--text-3);
   margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.player-center { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.player-controls { display: inline-flex; align-items: center; gap: 6px; }
-.play-btn {
-  width: 36px; height: 36px; border-radius: 999px;
-  background: var(--text-1);
-  color: var(--bg-0);
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: transform var(--t-fast);
+/* 中间区域：进度条 + 控制按钮 合并一行 */
+.player-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
-.play-btn:hover { transform: scale(1.06); }
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
 .player-progress {
-  display: flex; align-items: center; gap: 10px; width: min(480px, 90%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 80px;
 }
-.player-progress .t { font-size: var(--fs-11); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.player-progress .t { font-size: var(--fs-11); color: var(--text-3); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .player-progress .bar {
   flex: 1; height: 4px; background: var(--bg-3); border-radius: 999px; cursor: pointer; position: relative;
 }
 .player-progress .bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), #c9b6ff);
-  border-radius: 999px;
-  width: 0;
+  height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #c9b6ff); width: 0;
 }
 
-.player-right { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+/* 右侧按钮 */
+.player-right { display: flex; align-items: center; gap: 6px; justify-content: flex-end; flex-shrink: 0; }
 
-/* === 桌面/移动端显示切换（默认：桌面） === */
-.is-mobile-only { display: none; }
-.is-desktop-only { display: inline-flex; align-items: center; justify-content: center; }
+/* 播放按钮样式 */
+.play-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--text-1);
+  color: var(--bg-0);
+  cursor: pointer;
+  transition: transform var(--t-fast);
+}
+.play-btn:hover { transform: scale(1.08); }
 
-/* 播放器右侧按钮：桌面端隐藏移动端专属按钮 */
+/* 桌面端隐藏移动端专属按钮 */
 .player-right #btn-prev-m,
 .player-right #btn-play-m,
 .player-right #btn-next-m { display: none; }
 
 .vol-bar {
-  width: 90px; height: 4px; background: var(--bg-3); border-radius: 999px; cursor: pointer; position: relative;
+  width: 80px; height: 4px; background: var(--bg-3); border-radius: 999px; cursor: pointer; position: relative;
 }
 .vol-fill {
   height: 100%;
