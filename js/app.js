@@ -100,6 +100,7 @@ const App = (() => {
           t.classList.add("is-active");
           body.innerHTML = Pages.profileColtab(t.dataset.coltab);
           bindCards(body);
+          bindViewToggle(body);
         });
       });
     }
@@ -150,6 +151,8 @@ const App = (() => {
 
     // 歌单/专辑/歌手卡片点击 → 歌单详情或直接播放
     bindCards(container);
+    // 视图切换（列表 ↔ 图标）
+    bindViewToggle(container);
 
     // 播放队列 panel
     bindQueuePanel(container);
@@ -246,6 +249,51 @@ const App = (() => {
     // 快捷入口 chip (部分有 data-goto 由全局委托处理，这里处理无 data-goto 的)
     root.querySelectorAll(".quick-chip:not([data-goto])").forEach(chip => {
       chip.addEventListener("click", () => Player.playAll(pickN(TRACKS, 8, 0)));
+    });
+  }
+
+  /* 视图切换：列表 ↔ 图标网格 */
+  function bindViewToggle(root) {
+    root.querySelectorAll(".view-toggle").forEach(toggle => {
+      // 如果已绑定过，跳过
+      if (toggle.dataset.bound === "1") return;
+      toggle.dataset.bound = "1";
+
+      const targetSelector = toggle.dataset.target;
+      // 在同一个 section / group 内查找目标容器
+      const section = toggle.closest(".page-section, .search-group, #coltab-body");
+      if (!section) return;
+      const target = section.querySelector(targetSelector);
+      if (!target) return;
+
+      // 恢复已保存的视图偏好
+      const key = "view_" + (section.dataset.viewKey || targetSelector.replace(/[^a-zA-Z0-9]/g, "_"));
+      const saved = localStorage.getItem(key);
+      if (saved === "grid") {
+        target.classList.add("is-grid");
+        target.classList.remove("is-list");
+        toggle.querySelectorAll(".vt-btn").forEach(b => {
+          b.classList.toggle("is-active", b.dataset.view === "grid");
+        });
+      }
+
+      toggle.querySelectorAll(".vt-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const view = btn.dataset.view;
+          toggle.querySelectorAll(".vt-btn").forEach(b => b.classList.remove("is-active"));
+          btn.classList.add("is-active");
+
+          if (view === "grid") {
+            target.classList.add("is-grid");
+            target.classList.remove("is-list");
+          } else {
+            target.classList.add("is-list");
+            target.classList.remove("is-grid");
+          }
+          // 持久化
+          try { localStorage.setItem(key, view); } catch (_) {}
+        });
+      });
     });
   }
 

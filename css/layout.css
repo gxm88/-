@@ -348,6 +348,17 @@
 }
 .section-more:hover { color: var(--accent); }
 
+.section-head-right {
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+
+.search-group-title {
+  margin: 0;
+  font-size: var(--fs-15);
+  font-weight: 600;
+}
+
 /* ---- 底部播放器（固定在底部） ---- */
 .player-bar {
   position: fixed;

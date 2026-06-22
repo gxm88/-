@@ -30,6 +30,19 @@ const Pages = (() => {
       </div>`;
   }
 
+  /** 视图切换按钮 */
+  function viewToggleBtn(target) {
+    return `
+      <div class="view-toggle" data-target="${target}">
+        <button class="vt-btn is-active" data-view="list" title="列表视图">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+        <button class="vt-btn" data-view="grid" title="图标视图">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+      </div>`;
+  }
+
   /** 媒体块 (歌单/专辑 列表项) */
   function mediaBlock(item, i) {
     const [c1, c2] = colorOf(i + 3);
@@ -134,7 +147,7 @@ const Pages = (() => {
       <section class="page-section anim-fade-up stagger-1">
         <div class="section-head">
           <h3 class="section-title">今日推荐</h3>
-          <button class="section-more" data-goto="discover">歌单广场 →</button>
+          <div class="section-head-right">${viewToggleBtn(".media-list")}<button class="section-more" data-goto="discover">歌单广场 →</button></div>
         </div>
         <div class="media-list">
           ${PLAYLISTS.slice(0, 5).map((p, i) => mediaBlock({
@@ -148,7 +161,7 @@ const Pages = (() => {
       <section class="page-section anim-fade-up stagger-2">
         <div class="section-head">
           <h3 class="section-title">最近播放</h3>
-          <button class="section-more" data-goto="library">浏览全部 →</button>
+          <div class="section-head-right">${viewToggleBtn(".track-list")}<button class="section-more" data-goto="library">浏览全部 →</button></div>
         </div>
         <div class="track-list">
           ${pickN(TRACKS, 5, 2).map((t, i) => rowFor(t, i)).join("")}
@@ -212,6 +225,7 @@ const Pages = (() => {
       <section class="page-section">
         <div class="section-head">
           <h3 class="section-title">推荐歌单 · ${PLAYLISTS.length} 张</h3>
+          ${viewToggleBtn(".media-list")}
         </div>
         <div class="media-list">
           ${PLAYLISTS.map((p, i) => mediaBlock({
@@ -225,7 +239,7 @@ const Pages = (() => {
       <section class="page-section anim-fade-up stagger-1">
         <div class="section-head">
           <h3 class="section-title">热门歌手</h3>
-          <button class="section-more" data-goto="artists">全部歌手 →</button>
+          <div class="section-head-right">${viewToggleBtn(".artist-scroll")}<button class="section-more" data-goto="artists">全部歌手 →</button></div>
         </div>
         <div class="artist-scroll">
           ${ARTISTS.map(artistChip).join("")}
@@ -235,7 +249,7 @@ const Pages = (() => {
       <section class="page-section anim-fade-up stagger-2">
         <div class="section-head">
           <h3 class="section-title">本地曲库最新</h3>
-          <button class="section-more" data-goto="library">查看全部 ${TRACKS.length} 首 →</button>
+          <div class="section-head-right">${viewToggleBtn(".track-list")}<button class="section-more" data-goto="library">查看全部 ${TRACKS.length} 首 →</button></div>
         </div>
         <div class="track-list">
           ${pickN(TRACKS, 6, 0).map((t, i) => rowFor(t, i)).join("")}
@@ -278,6 +292,7 @@ const Pages = (() => {
       <section class="page-section anim-fade-up stagger-2">
         <div class="section-head">
           <h3 class="section-title">AI 生成的推荐歌单</h3>
+          ${viewToggleBtn(".media-list")}
         </div>
         <div class="media-list">
           ${PLAYLISTS.filter(p => p.type === "ai").map((p, i) => mediaBlock({
@@ -308,6 +323,7 @@ const Pages = (() => {
       <section class="page-section anim-fade-up stagger-4">
         <div class="section-head">
           <h3 class="section-title">相似推荐 · 基于当前播放</h3>
+          ${viewToggleBtn(".track-list")}
         </div>
         <p style="color:var(--text-3);font-size:13px;margin-bottom:14px">与「Starlit Drive · Aurora Lane」在风格、情绪、节奏上相近的歌曲</p>
         <div class="track-list">
@@ -334,6 +350,11 @@ const Pages = (() => {
           <button class="filter-pill">按添加时间</button>
           <button class="filter-pill">按播放次数</button>
         </div>
+      </div>
+
+      <div class="section-head anim-fade-up stagger-1">
+        <h3 class="section-title">全部曲目 · ${TRACKS.length} 首</h3>
+        ${viewToggleBtn(".track-list")}
       </div>
 
       <div class="track-list anim-fade-up stagger-1">
@@ -411,6 +432,7 @@ const Pages = (() => {
       <section class="page-section anim-fade-up stagger-2">
         <div class="section-head">
           <h3 class="section-title">热门单曲</h3>
+          ${viewToggleBtn(".track-list")}
         </div>
         <div class="track-list">
           ${pickN(TRACKS, 10, 0).map((t, i) => rowFor(t, i)).join("")}
@@ -425,6 +447,10 @@ const Pages = (() => {
   function albums() {
     return `
       ${pageHero("专辑", "以专辑为单位的完整收藏 · 点击查看曲目列表与相似专辑。", { brand: ALBUMS.length + " 张专辑" })}
+      <div class="section-head anim-fade-up stagger-1">
+        <h3 class="section-title">全部专辑 · ${ALBUMS.length} 张</h3>
+        ${viewToggleBtn(".media-list")}
+      </div>
       <div class="media-list anim-fade-up stagger-1">
         ${ALBUMS.map((a, i) => mediaBlock({
           title: a.title,
@@ -444,6 +470,10 @@ const Pages = (() => {
 
       <div class="folder-breadcrumb anim-fade-up">
         <span>music</span><span class="sep">/</span>
+      </div>
+      <div class="section-head anim-fade-up stagger-1">
+        <h3 class="section-title">目录列表 · ${FOLDERS.length} 个</h3>
+        ${viewToggleBtn(".folder-grid")}
       </div>
       <div class="folder-grid anim-fade-up stagger-1">
         ${FOLDERS.map((f, i) => {
@@ -516,18 +546,38 @@ const Pages = (() => {
 
   function profileColtab(type) {
     if (type === "songs") {
-      return `<div class="track-list">${pickN(TRACKS, 10, 4).map((t, i) => rowFor(t, i)).join("")}</div>`;
+      return `
+        <div class="section-head">
+          <h3 class="section-title">收藏的歌曲</h3>
+          ${viewToggleBtn(".track-list")}
+        </div>
+        <div class="track-list">${pickN(TRACKS, 10, 4).map((t, i) => rowFor(t, i)).join("")}</div>`;
     }
     if (type === "albums") {
-      return `<div class="media-list">${ALBUMS.slice(0, 8).map((a, i) => mediaBlock({
+      return `
+        <div class="section-head">
+          <h3 class="section-title">收藏的专辑</h3>
+          ${viewToggleBtn(".media-list")}
+        </div>
+        <div class="media-list">${ALBUMS.slice(0, 8).map((a, i) => mediaBlock({
         title: a.title, sub: a.artist + " · " + a.year, albumId: a.id,
       }, i)).join("")}</div>`;
     }
     if (type === "artists") {
-      return `<div class="artist-scroll">${ARTISTS.slice(0, 8).map(artistChip).join("")}</div>`;
+      return `
+        <div class="section-head">
+          <h3 class="section-title">收藏的歌手</h3>
+          ${viewToggleBtn(".artist-scroll")}
+        </div>
+        <div class="artist-scroll">${ARTISTS.slice(0, 8).map(artistChip).join("")}</div>`;
     }
     if (type === "playlists") {
-      return `<div class="media-list">${PLAYLISTS.filter(p => p.type === "user").map((p, i) => mediaBlock({
+      return `
+        <div class="section-head">
+          <h3 class="section-title">我的歌单</h3>
+          ${viewToggleBtn(".media-list")}
+        </div>
+        <div class="media-list">${PLAYLISTS.filter(p => p.type === "user").map((p, i) => mediaBlock({
         title: p.title, sub: `${p.tracks} 首 · ${p.duration}`, type: "user",
       }, i)).join("")}</div>`;
     }
@@ -540,6 +590,10 @@ const Pages = (() => {
           <span class="filter-pill">全部</span>
           <span class="filter-spacer"></span>
           <span class="filter-pill">一键清空历史</span>
+        </div>
+        <div class="section-head">
+          <h3 class="section-title">播放历史</h3>
+          ${viewToggleBtn(".track-list")}
         </div>
         <div class="track-list">${pickN(TRACKS, 12, 2).map((t, i) => rowFor(t, i)).join("")}</div>`;
     }
@@ -574,6 +628,10 @@ const Pages = (() => {
             </div>
           </div>
         </div>
+        <div class="section-head">
+          <h3 class="section-title">曲目列表 · ${p.tracks} 首</h3>
+          ${viewToggleBtn(".track-list")}
+        </div>
         <div class="track-list">
           ${pickN(TRACKS, Math.min(p.tracks, 12), p.id.charCodeAt(1) % 6).map((t, i) => rowFor(t, i)).join("")}
         </div>
@@ -606,13 +664,19 @@ const Pages = (() => {
 
       ${byTrack.length > 0 ? `
       <div class="search-group anim-fade-up stagger-1">
-        <h3 class="search-group-title">歌曲 · ${byTrack.length}</h3>
+        <div class="section-head" style="margin-bottom:10px">
+          <h3 class="search-group-title">歌曲 · ${byTrack.length}</h3>
+          ${viewToggleBtn(".track-list")}
+        </div>
         <div class="track-list">${byTrack.slice(0, 8).map((t, i) => rowFor({ ...t, title: hl(t.title), artist: hl(t.artist) }, i)).join("")}</div>
       </div>` : ""}
 
       ${byAlbum.length > 0 ? `
       <div class="search-group anim-fade-up stagger-2">
-        <h3 class="search-group-title">专辑 · ${byAlbum.length}</h3>
+        <div class="section-head" style="margin-bottom:10px">
+          <h3 class="search-group-title">专辑 · ${byAlbum.length}</h3>
+          ${viewToggleBtn(".media-list")}
+        </div>
         <div class="media-list">${byAlbum.slice(0, 6).map((a, i) => mediaBlock({
           title: hl(a.title), sub: a.artist + " · " + a.year, albumId: a.id,
         }, i)).join("")}</div>
@@ -620,13 +684,19 @@ const Pages = (() => {
 
       ${byArtist.length > 0 ? `
       <div class="search-group anim-fade-up stagger-3">
-        <h3 class="search-group-title">歌手 · ${byArtist.length}</h3>
+        <div class="section-head" style="margin-bottom:10px">
+          <h3 class="search-group-title">歌手 · ${byArtist.length}</h3>
+          ${viewToggleBtn(".artist-scroll")}
+        </div>
         <div class="artist-scroll">${byArtist.slice(0, 6).map(artistChip).join("")}</div>
       </div>` : ""}
 
       ${byPl.length > 0 ? `
       <div class="search-group anim-fade-up stagger-4">
-        <h3 class="search-group-title">歌单 · ${byPl.length}</h3>
+        <div class="section-head" style="margin-bottom:10px">
+          <h3 class="search-group-title">歌单 · ${byPl.length}</h3>
+          ${viewToggleBtn(".media-list")}
+        </div>
         <div class="media-list">${byPl.slice(0, 6).map((p, i) => mediaBlock({
           title: p.title, sub: `${p.tracks} 首 · ${p.duration}`, type: p.type,
         }, i)).join("")}</div>
@@ -634,7 +704,10 @@ const Pages = (() => {
 
       ${byChart.length > 0 ? `
       <div class="search-group anim-fade-up stagger-5">
-        <h3 class="search-group-title">全网 · ${byChart.length}（标注本地有无）</h3>
+        <div class="section-head" style="margin-bottom:10px">
+          <h3 class="search-group-title">全网 · ${byChart.length}（标注本地有无）</h3>
+          ${viewToggleBtn(".track-list")}
+        </div>
         <div class="track-list">${byChart.slice(0, 6).map(chartRow).join("")}</div>
       </div>` : ""}
 

@@ -751,6 +751,220 @@
   border-radius: 2px 2px 0 0;
 }
 
+/* ============================================================
+   视图切换 · 列表 ↔ 图标
+   ============================================================ */
+
+/* 切换按钮组 */
+.view-toggle {
+  display: inline-flex; gap: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-8);
+  padding: 2px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+.view-toggle .vt-btn {
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  color: var(--text-3);
+  transition: all var(--t-fast);
+}
+.view-toggle .vt-btn:hover { color: var(--text-1); }
+.view-toggle .vt-btn.is-active {
+  background: var(--bg-3);
+  color: var(--accent);
+}
+
+/* ============ track-list 网格视图 ============ */
+.track-list.is-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  border-top: none;
+}
+.track-list.is-grid .track-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 12px 14px;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-12);
+  background: var(--bg-2);
+  cursor: pointer;
+  transition: background var(--t-fast), transform var(--t-fast), border-color var(--t-fast);
+}
+.track-list.is-grid .track-row:hover {
+  background: var(--bg-3);
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+.track-list.is-grid .track-row::before { display: none; }
+.track-list.is-grid .track-num { display: none; }
+.track-list.is-grid .track-cover-sm {
+  width: 80px; height: 80px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.track-list.is-grid .track-info {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+.track-list.is-grid .track-name {
+  font-size: 13px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+}
+.track-list.is-grid .track-name-sub {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.track-list.is-grid .track-col { display: none; }
+.track-list.is-grid .track-dur { display: none; }
+.track-list.is-grid .track-act {
+  opacity: 1;
+  margin-top: 2px;
+}
+.track-list.is-grid .local-status { font-size: 10px; padding: 2px 8px; }
+
+/* ============ media-list 网格视图 ============ */
+.media-list.is-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+.media-list.is-grid .media-block {
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px 14px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--r-12);
+  background: var(--bg-2);
+  transition: background var(--t-fast), transform var(--t-fast), border-color var(--t-fast);
+}
+.media-list.is-grid .media-block:hover {
+  background: var(--bg-3);
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+.media-list.is-grid .media-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+.media-list.is-grid .media-body {
+  text-align: center;
+}
+.media-list.is-grid .media-title {
+  font-size: 13px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+}
+.media-list.is-grid .media-sub {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.media-list.is-grid .media-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+.media-list.is-grid .media-block {
+  position: relative;
+}
+
+/* ============ artist-scroll 网格视图 ============ */
+.artist-scroll.is-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 16px;
+  overflow-x: visible;
+  padding: 4px 0;
+}
+.artist-scroll.is-grid .artist-chip {
+  flex-shrink: 1;
+}
+.artist-scroll.is-grid .artist-chip .ring {
+  width: 72px; height: 72px;
+}
+
+/* ============ folder-grid 列表视图 ============ */
+.folder-grid.is-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.folder-grid.is-list .folder-item {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  transform: none;
+  margin-bottom: 0;
+}
+.folder-grid.is-list .folder-item:hover {
+  background: var(--bg-2);
+  transform: none;
+  border-color: transparent;
+  border-bottom-color: var(--border);
+}
+.folder-grid.is-list .folder-item:first-child {
+  border-top: 1px solid var(--border);
+}
+
+/* ============ 歌单广场 grid 网格 ============ */
+.card-grid.is-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.card-grid.is-list .playlist-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+  transform: none;
+}
+.card-grid.is-list .playlist-card:hover {
+  transform: none;
+  background: var(--bg-2);
+}
+.card-grid.is-list .playlist-cover {
+  width: 52px; height: 52px;
+  aspect-ratio: auto;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.card-grid.is-list .playlist-cover .play-hint { display: none; }
+.card-grid.is-list .playlist-title {
+  margin-top: 0;
+  font-size: 14px;
+  -webkit-line-clamp: 1;
+}
+.card-grid.is-list .playlist-sub { margin-top: 2px; }
+
 /* 加载状态（骨架） */
 .skeleton {
   background: linear-gradient(90deg, var(--bg-2), var(--bg-3), var(--bg-2));
@@ -880,6 +1094,23 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
+
+  /* 视图切换：移动端更紧凑 */
+  .view-toggle .vt-btn { width: 24px; height: 24px; }
+  .track-list.is-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .track-list.is-grid .track-cover-sm { width: 64px; height: 64px; }
+  .media-list.is-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .artist-scroll.is-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .artist-scroll.is-grid .artist-chip .ring { width: 56px; height: 56px; }
   .folder-item { padding: 10px; }
   .folder-ic { width: 26px; height: 26px; font-size: 13px; }
   .folder-name { font-size: 12px; }
