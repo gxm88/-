@@ -995,11 +995,10 @@
   .fs-title { font-size: 18px; }
 }
 
-/* ---------- 桌面：隐藏移动端底部三 Tab / 恢复播放器三列 ---------- */
+/* ---------- 桌面：隐藏移动端底部三 Tab / 恢复播放器 ---- */
 @media (min-width: 769px) {
   .mobile-bottom-nav { display: none; }
   .player-bar {
-    grid-template-columns: 1.1fr 1.4fr 1fr;
     padding: 10px 18px;
   }
   /* 桌面端给内容底部留播放器高度 */

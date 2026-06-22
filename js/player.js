@@ -479,14 +479,31 @@ const Player = (() => {
     if (t) {
       if ($("fs-title")) $("fs-title").textContent = t.title;
       if ($("fs-sub")) $("fs-sub").textContent = `${t.artist} · ${t.album}`;
-      if ($("fs-plays")) $("fs-plays").textContent = `${Math.floor(Math.random() * 120) + 20}`;
-      if ($("fs-match")) $("fs-match").textContent = `${70 + (t.id.charCodeAt(2) % 28)}%`;
+      // 异步获取播放次数
+      API.getTrack(t.id).then(res => {
+        if (res.data && $("fs-plays")) {
+          $("fs-plays").textContent = res.data.plays || String((t.id.charCodeAt(2) % 10 + 1) * 24);
+        }
+      }).catch(() => {
+        if ($("fs-plays")) $("fs-plays").textContent = "...";
+      });
+      // 异步获取 AI 匹配度
+      API.getSimilar().then(res => {
+        if (res.data && $("fs-match")) {
+          const similar = Array.isArray(res.data) ? res.data : (res.data.tracks || []);
+          const matchCount = similar.filter(s => s.genre === t.genre).length;
+          const pct = Math.min(98, 60 + matchCount * 6);
+          $("fs-match").textContent = `${pct}%`;
+        }
+      }).catch(() => {
+        if ($("fs-match")) $("fs-match").textContent = "—";
+      });
     }
 
     // 歌词
     const lyricsEl = $("lyrics");
     if (lyricsEl) {
-      const lines = [
+      const defaultLines = [
         "♪ 夜色在霓虹中晕开",
         "♪ 收音机吐出蓝色的光",
         "♪ 我的鞋子踩在湿润的柏油路上",
@@ -496,6 +513,7 @@ const Player = (() => {
         "♪ 每一次停顿都是一次再见",
         "♪ 在午夜的轨道上我们慢慢远去",
       ];
+      const lines = (t && t.lyrics) ? t.lyrics.split("\n").filter(l => l.trim()) : defaultLines;
       lyricsEl.innerHTML = lines.map((l, i) =>
         `<div class="lyric-line ${i === Math.floor(state.progress * 4) % lines.length ? "is-current" : ""}">${l}</div>`
       ).join("");
@@ -593,6 +611,9 @@ const Player = (() => {
     // 高亮当前播放的行
     document.querySelectorAll(".track-row").forEach(r => r.classList.remove("is-playing"));
     document.querySelectorAll(`.track-row[data-track="${t.id}"]`).forEach(r => r.classList.add("is-playing"));
+
+    // 同步收藏按钮状态
+    updateFavButton();
   }
 
   function renderControls() {
@@ -721,7 +742,7 @@ const Player = (() => {
 
   function togglePlay() {
     if (state.queue.length === 0) {
-      loadTracks(pickN(TRACKS, 12, 0));
+      API.getTracks().then(res => loadTracks(res.data.slice(0, 12)));
       playIndex(0);
       return;
     }
@@ -947,6 +968,7 @@ const Player = (() => {
 
     if (state.favorite.has(t.id)) {
       state.favorite.delete(t.id);
+      API.removeFavorite(t.id).catch(() => {});
       if (bfav) { bfav.textContent = "♡"; bfav.style.color = ""; }
       if (bfavm) {
         bfavm.style.color = "";
@@ -954,6 +976,7 @@ const Player = (() => {
       }
     } else {
       state.favorite.add(t.id);
+      API.addFavorite(t.id).catch(() => {});
       if (bfav) { bfav.textContent = "♥"; bfav.style.color = "#f87171"; }
       if (bfavm) {
         bfavm.style.color = "#f87171";
@@ -962,7 +985,38 @@ const Player = (() => {
     }
   }
 
-  // ---- 均衡器 ----
+  // ---- 启动时从 API 恢复收藏状态 ----
+  function initFavorites() {
+    API.getFavorites().then(res => {
+      const tracks = Array.isArray(res.data) ? res.data : (res.data && res.data.tracks ? res.data.tracks : []);
+      tracks.forEach(t => {
+        if (t && t.id) state.favorite.add(t.id);
+      });
+      updateFavButton();
+    }).catch(() => {});
+  }
+
+  function updateFavButton() {
+    const t = state.queue[state.index];
+    const bfav = $("btn-fav");
+    const bfavm = $("btn-fav-m");
+    if (!t) return;
+    if (state.favorite.has(t.id)) {
+      if (bfav) { bfav.textContent = "♥"; bfav.style.color = "#f87171"; }
+      if (bfavm) {
+        bfavm.style.color = "#f87171";
+        bfavm.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#f87171" stroke="#f87171" stroke-width="2"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11-1 .6-3 .6-4 0z"></path></svg>';
+      }
+    } else {
+      if (bfav) { bfav.textContent = "♡"; bfav.style.color = ""; }
+      if (bfavm) {
+        bfavm.style.color = "";
+        bfavm.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11-1 .6-3 .6-4 0z"></path></svg>';
+      }
+    }
+  }
+
+  // ---- 均衡器 (预设) ----
   function applyEQPreset(key) {
     const preset = EQ_PRESETS[key];
     if (!preset) return;
@@ -1131,6 +1185,7 @@ const Player = (() => {
       renderProgress();
       renderVolume();
       initAudioContext();
+      initFavorites();
     },
     playAll, loadTracks, playIndex, togglePlay, next, prev,
     seekTo,

@@ -18,8 +18,10 @@ const colorOf = (i) => COLORS[Math.abs(i) % COLORS.length];
 
 // --- 歌曲 ---
 const TRACKS = [
-  { id: "t01", title: "Starlit Drive",     artist: "Aurora Lane",  album: "Neon Moon",   genre: "电子 / Synthwave", style: "Indie",  dur: 218, year: 2024 },
-  { id: "t02", title: "Midnight Library",  artist: "Paper Kite",   album: "Neon Moon",   genre: "独立民谣",        style: "Chill",  dur: 192, year: 2024 },
+  { id: "t01", title: "Starlit Drive",     artist: "Aurora Lane",  album: "Neon Moon",   genre: "电子 / Synthwave", style: "Indie",  dur: 218, year: 2024,
+    lyrics: "♪ 霓虹在车窗上流淌\n♪ 高速公路穿过城市的梦\n♪ 星光指引着方向\n♪ 在无尽的夜色中巡航\n♪ 引擎低吟着八十年代的旋律\n♪ 我们的速度超越了时间\n♪ 每一次加速都是一次心跳\n♪ 在星光照耀的公路上飞驰" },
+  { id: "t02", title: "Midnight Library",  artist: "Paper Kite",   album: "Neon Moon",   genre: "独立民谣",        style: "Chill",  dur: 192, year: 2024,
+    lyrics: "♪ 午夜的图书馆灯光昏黄\n♪ 纸页在指尖轻轻翻动\n♪ 每一本书都是一个世界\n♪ 在寂静中我听见自己的呼吸\n♪ 窗外的月光洒在书架上\n♪ 故事里的角色在轻声交谈\n♪ 我在这片文字的海洋里\n♪ 找到了属于我的秘密角落" },
   { id: "t03", title: "Ocean of Trees",    artist: "Hollow Pine",  album: "Ocean of Trees", genre: "氛围 / Post-rock", style: "Atmos", dur: 342, year: 2023 },
   { id: "t04", title: "Blue Highway",      artist: "Aurora Lane",  album: "Neon Moon",   genre: "电子 / Dream-pop", style: "Dream", dur: 231, year: 2024 },
   { id: "t05", title: "Honey & Smoke",     artist: "Ember Fells",  album: "Rust & Gold",  genre: "乡村摇滚",        style: "Warm",  dur: 208, year: 2022 },
@@ -27,7 +29,8 @@ const TRACKS = [
   { id: "t07", title: "Neon Cathedral",    artist: "Aurora Lane",  album: "Neon Moon",   genre: "电子 / Synthwave", style: "Synth", dur: 245, year: 2024 },
   { id: "t08", title: "Lost in the Garden",artist: "Hollow Pine",  album: "Ocean of Trees", genre: "氛围",          style: "Chill", dur: 298, year: 2023 },
   { id: "t09", title: "Golden Afternoons", artist: "Ember Fells",  album: "Rust & Gold",  genre: "乡村摇滚",        style: "Warm",  dur: 223, year: 2022 },
-  { id: "t10", title: "Velvet Hours",      artist: "Cinder Row",   album: "Velvet Hours", genre: "爵士 / Lounge",  style: "Jazz",  dur: 276, year: 2020 },
+  { id: "t10", title: "Velvet Hours",      artist: "Cinder Row",   album: "Velvet Hours", genre: "爵士 / Lounge",  style: "Jazz",  dur: 276, year: 2020,
+    lyrics: "♪ 天鹅绒般的时光缓缓流淌\n♪ 萨克斯在角落轻声吟唱\n♪ 酒杯里的冰块轻轻碰撞\n♪ 这个夜晚属于慵懒的爵士\n♪ 灯光昏黄如旧照片\n♪ 时间在这里放慢了脚步\n♪ 每一个音符都是温柔的拥抱\n♪ 在天鹅绒的时光里沉醉" },
   { id: "t11", title: "Silent Compass",    artist: "Cinder Row",   album: "Velvet Hours", genre: "爵士 / Slow",     style: "Late",  dur: 312, year: 2020 },
   { id: "t12", title: "Slow Letters",      artist: "Cinder Row",   album: "Velvet Hours", genre: "爵士",           style: "Late",  dur: 288, year: 2020 },
   { id: "t13", title: "Violet Room",       artist: "Marble Field", album: "Violet Room",  genre: "Dream Pop",       style: "Dream", dur: 234, year: 2019 },
