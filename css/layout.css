@@ -920,9 +920,10 @@
   .player-right #btn-play-m,
   .player-right #btn-next-m { display: inline-flex; }
   /* 隐藏桌面端按钮 */
-  .player-right #btn-queue,
   .player-right .vol-bar,
   .player-right #btn-expand { display: none; }
+  /* 队列按钮在移动端也显示 */
+  .player-right #btn-queue { display: inline-flex; }
   
   .player-right .icon-btn {
     width: 32px; height: 32px;
