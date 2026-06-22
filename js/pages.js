@@ -326,11 +326,14 @@ const Pages = (() => {
       ${pageHero("全部歌曲", "点击任意行即可播放 · 所有曲目来自本地 /music 目录 · 支持搜索、筛选、排序", { brand: `本地曲库 · ${TRACKS.length} 首已收录` })}
 
       <div class="filter-bar anim-fade-up stagger-1">
-        ${genres.map((g, i) => `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${g}</span>`).join("")}
-        <span class="filter-spacer"></span>
-        <span class="filter-pill is-active">默认排序</span>
-        <span class="filter-pill">按添加时间</span>
-        <span class="filter-pill">按播放次数</span>
+        <div class="filter-group">
+          ${genres.map((g, i) => `<button class="filter-pill ${i === 0 ? "is-active" : ""}" data-filter="${g}">${g}</button>`).join("")}
+        </div>
+        <div class="filter-group">
+          <button class="filter-pill is-active">默认排序</button>
+          <button class="filter-pill">按添加时间</button>
+          <button class="filter-pill">按播放次数</button>
+        </div>
       </div>
 
       <div class="track-list anim-fade-up stagger-1">

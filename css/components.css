@@ -473,18 +473,37 @@
 }
 .col-tab.is-active { background: var(--bg-3); color: var(--text-1); }
 
-/* 过滤器 / 排序 */
+/* 过滤器 / 排序 · 统一布局：左侧分类 + 右侧排序，屏幕不够会两行 */
 .filter-bar {
-  display: flex; align-items: center; gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
   margin-bottom: 18px;
 }
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .filter-pill {
-  padding: 6px 12px;
+  padding: 6px 14px;
   font-size: var(--fs-12);
   border-radius: 999px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   color: var(--text-2);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  flex-shrink: 0;
+  user-select: none;
+}
+.filter-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .filter-pill.is-active {
   background: var(--accent-soft);
@@ -815,12 +834,13 @@
   }
   .col-tab { flex-shrink: 0; font-size: 11px; padding: 6px 12px; }
 
-  /* 过滤器 pill */
+  /* 过滤器 pill · 更紧凑，支持两行 */
   .filter-bar {
-    flex-wrap: wrap;
-    gap: 8px;
+    gap: 8px 10px;
+    margin-bottom: 14px;
   }
-  .filter-pill { font-size: 11px; padding: 5px 10px; }
+  .filter-pill { font-size: 11px; padding: 5px 12px; }
+  .filter-group { width: 100%; }
 
   /* 歌单详情 Hero：改为竖向 */
   .playlist-hero {
