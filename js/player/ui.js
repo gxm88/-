@@ -369,12 +369,6 @@ window.Player = window.Player || {};
       bclear.addEventListener("click", window.Player.clearQueue);
     }
 
-    // 全屏按钮（桌面端）
-    const bf = document.getElementById("btn-expand");
-    if (bf && !bf.dataset.bound) {
-      bf.dataset.bound = "1";
-      bf.addEventListener("click", window.Player.toggleFullscreen);
-    }
     // 关闭全屏
     const fsc = document.getElementById("btn-fs-close");
     if (fsc && !fsc.dataset.bound) {
@@ -486,6 +480,53 @@ window.Player = window.Player || {};
         }
       }
     });
+
+    // ---- 播放器栏自动隐藏/显示 ----
+    bindPlayerBarAutoHide();
+  }
+
+  /* 播放器栏自动隐藏：5 秒无操作隐藏，播放中不隐藏，鼠标移到底部热区显示 */
+  let _hideTimer = null;
+  function bindPlayerBarAutoHide() {
+    const bar = document.getElementById("player-bar");
+    const hotzone = document.getElementById("player-hotzone");
+    if (!bar) return;
+
+    function showBar() {
+      bar.classList.remove("is-hidden-bar");
+      resetTimer();
+    }
+
+    function hideBar() {
+      const state = window.Player.state;
+      // 播放中不隐藏
+      if (state && state.playing) return;
+      bar.classList.add("is-hidden-bar");
+    }
+
+    function resetTimer() {
+      if (_hideTimer) clearTimeout(_hideTimer);
+      _hideTimer = setTimeout(hideBar, 5000);
+    }
+
+    // 热区鼠标移入 → 显示
+    if (hotzone && !hotzone.dataset.bound) {
+      hotzone.dataset.bound = "1";
+      hotzone.addEventListener("mouseenter", showBar);
+    }
+
+    // 播放器上交互 → 重置计时器
+    if (!bar.dataset.boundHide) {
+      bar.dataset.boundHide = "1";
+      bar.addEventListener("mouseenter", showBar);
+      bar.addEventListener("mousemove", resetTimer);
+      bar.addEventListener("click", resetTimer);
+      bar.addEventListener("touchstart", showBar, { passive: true });
+      bar.addEventListener("touchmove", resetTimer, { passive: true });
+    }
+
+    // 初始启动计时器
+    resetTimer();
   }
 
   // Export

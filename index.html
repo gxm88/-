@@ -213,7 +213,7 @@
 
     <!-- 底部常驻播放器（精简版） -->
     <footer class="player-bar" id="player-bar">
-      <div class="player-track" id="player-track-area" onclick="Player.toggleFullscreen()">
+      <div class="player-track" id="player-track-area">
         <div class="player-cover" id="player-cover"></div>
         <div class="player-meta">
           <div class="player-title" id="player-title">未在播放</div>
@@ -258,9 +258,6 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h13M3 18h9M17 14l4 4-4 4"></path></svg>
         </button>
         <div class="vol-bar"><div class="vol-fill" id="vol-fill"></div></div>
-        <button class="icon-btn" id="btn-expand" title="全屏播放器">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>
-        </button>
       </div>
 
       <!-- 播放队列浮层 -->
@@ -275,6 +272,9 @@
         <div class="queue-list" id="queue-list"></div>
       </div>
     </footer>
+
+    <!-- 底部热区：鼠标移入显示播放器 -->
+    <div class="player-hotzone" id="player-hotzone"></div>
 
     <!-- EQ 均衡器面板 -->
     <div class="eq-panel" id="eq-panel"></div>

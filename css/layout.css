@@ -377,6 +377,18 @@
   border-top: 1px solid var(--border);
   z-index: 110;
   height: 64px;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
+}
+.player-bar.is-hidden-bar {
+  transform: translateY(100%);
+}
+/* 底部热区：鼠标移入时显示播放器 */
+.player-hotzone {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 50px;
+  z-index: 109;
 }
 .player-track { display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer; flex-shrink: 0; }
 .player-cover {

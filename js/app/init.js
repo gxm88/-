@@ -35,10 +35,11 @@ window.App = window.App || {};
 
     const at = document.getElementById("avatar-trigger");
     if (at) at.addEventListener("click", (e) => {
-      e.stopPropagation();
       at.classList.toggle("is-open");
     });
-    document.addEventListener("click", () => at && at.classList.remove("is-open"));
+    document.addEventListener("click", (e) => {
+      if (at && !at.contains(e.target)) at.classList.remove("is-open");
+    });
 
     document.addEventListener("click", (e) => {
       const item = e.target.closest("[data-goto]");
