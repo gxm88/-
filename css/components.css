@@ -510,6 +510,12 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* NLP prompt 推荐 pill */
+.nlp-prompt-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .filter-spacer { flex: 1; }
 
 /* ---- 管理员后台专用网格 ---- */

@@ -25,7 +25,9 @@ const App = (() => {
     discover: () => Pages.discover(),
     charts: () => Pages.charts(),
     ai: () => Pages.aiCenter(),
-    "playlist-ai": () => Pages.aiCenter(),
+    "ai-daily": () => Pages.aiDaily(),
+    "ai-nlp": () => Pages.aiNLP(),
+    "playlist-ai": () => Pages.aiPlaylists(),
     library: () => Pages.library(),
     artists: () => Pages.artists(),
     albums: () => Pages.albums(),
@@ -79,7 +81,7 @@ const App = (() => {
     document.querySelectorAll(".m-nav-item").forEach(el => el.classList.remove("is-active"));
     const DISCOVER_ROUTES = ["discover", "charts", "search"];
     const LIB_ROUTES = ["library", "artists", "albums", "folders", "playlist-detail"];
-    const MINE_ROUTES = ["profile", "favorites", "history", "ai", "playlist-ai", "admin"];
+    const MINE_ROUTES = ["profile", "favorites", "history", "ai", "playlist-ai", "ai-daily", "ai-nlp", "admin"];
     let mobileTab = "discover"; // 默认
     if (route === "home") mobileTab = "discover"; // 首页归属发现 Tab
     else if (DISCOVER_ROUTES.includes(route)) mobileTab = "discover";
@@ -214,14 +216,6 @@ const App = (() => {
         if (t) Player.playAll([t]);
       });
     });
-    // AI 策略区 → 生成歌单或跳转
-    root.querySelectorAll(".ai-strategy-item[data-go-playlist]").forEach(el => {
-      el.addEventListener("click", () => {
-        const tracks = pickN(TRACKS, 10, el.dataset.goPlaylist.charCodeAt(1) % 5);
-        Player.playAll(tracks);
-      });
-    });
-
     // track-row 单击 → 播放
     root.querySelectorAll(".track-row[data-track]").forEach(row => {
       row.addEventListener("click", () => {
@@ -240,11 +234,68 @@ const App = (() => {
       });
     });
 
-    // AI 生成歌单按钮
-    const gen = root.querySelector("#btn-gen");
-    if (gen) gen.addEventListener("click", () => {
-      Player.playAll(pickN(TRACKS, 10, 2));
+    // AI 每日推荐刷新
+    const refreshDaily = root.querySelector("#btn-refresh-daily");
+    if (refreshDaily) refreshDaily.addEventListener("click", () => {
+      const today = new Date();
+      Player.playAll(pickN(TRACKS, 10, (today.getDate() + 1) % 7));
     });
+
+    // NLP 生成歌单页面
+    const nlpGen = root.querySelector("#nlp-gen-btn");
+    const nlpInput = root.querySelector("#nlp-input");
+    if (nlpGen && nlpInput) {
+      const doGenerate = (prompt) => {
+        const area = document.querySelector("#nlp-result-area");
+        if (!area) return;
+        const tracks = pickN(TRACKS, 10, (prompt || "default").length % 7);
+        area.innerHTML = `
+          <section class="page-section anim-fade-up">
+            <div class="section-head">
+              <h3 class="section-title">生成结果 · "${prompt || "自定义"}"</h3>
+              <div style="display:flex;gap:6px">
+                <button class="ai-card-cta" style="margin-top:0;padding:7px 16px;font-size:12px" id="nlp-play-all">▶ 播放全部</button>
+                ${Pages.viewToggleBtn("#nlp-tracks")}
+              </div>
+            </div>
+            <div class="track-list" id="nlp-tracks">
+              ${tracks.map((t, i) => Pages.rowFor(t, i)).join("")}
+            </div>
+          </section>
+          <section class="page-section anim-fade-up stagger-1">
+            <div class="ai-card" style="padding:22px 28px">
+              <div class="ai-card-title" style="font-size:16px;margin-top:0">AI 分析</div>
+              <p class="ai-card-sub" style="margin-top:6px">已从本地曲库 ${TRACKS.length} 首中匹配 ${tracks.length} 首，覆盖 ${[...new Set(tracks.map(t => t.genre))].length} 种风格。调性：${prompt.includes("慢") || prompt.includes("安静") || prompt.includes("治愈") ? "柔和 · 舒缓" : prompt.includes("高能量") || prompt.includes("跑步") ? "激昂 · 节奏感强" : prompt.includes("复古") ? "复古 · 合成器质感" : "多元 · 均衡"}</p>
+              <div class="ai-card-tags" style="margin-top:12px">
+                ${[...new Set(tracks.map(t => t.genre))].map(g => `<span class="ai-card-tag">${g}</span>`).join("")}
+                <span class="ai-card-tag">本地匹配</span>
+              </div>
+            </div>
+          </section>
+        `;
+        // 绑定新生成的播放和视图切换
+        const playBtn = area.querySelector("#nlp-play-all");
+        if (playBtn) playBtn.addEventListener("click", () => Player.playAll(tracks));
+        bindViewToggle(area);
+      };
+      nlpGen.addEventListener("click", () => {
+        const val = nlpInput.value.trim();
+        if (val) doGenerate(val);
+      });
+      nlpInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          const val = nlpInput.value.trim();
+          if (val) doGenerate(val);
+        }
+      });
+      // 推荐 prompt 点击
+      root.querySelectorAll(".nlp-prompt-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+          nlpInput.value = pill.dataset.prompt;
+          doGenerate(pill.dataset.prompt);
+        });
+      });
+    }
 
     // 快捷入口 chip (部分有 data-goto 由全局委托处理，这里处理无 data-goto 的)
     root.querySelectorAll(".quick-chip:not([data-goto])").forEach(chip => {
