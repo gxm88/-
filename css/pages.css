@@ -173,80 +173,52 @@
 }
 
 /* ============================================================
-   新增 · 歌单广场 / 排行榜 / 歌曲详情 / 全新 AI 中心
+   页面级样式 v2 · 歌单广场 / 排行榜 / AI 中心
    ============================================================ */
 
-/* ---- 通用页面头图 ---- */
-.hero-box {
-  border-radius: var(--r-16);
-  padding: 28px 28px;
-  background:
-    radial-gradient(520px 180px at 10% 20%, rgba(159,122,234,.22), transparent 60%),
-    linear-gradient(135deg, #1a1226, #0a0814);
-  border: 1px solid var(--border);
+/* ---- 页面头部 ---- */
+.page-hero {
+  padding: 32px 0 24px;
   margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
 }
-.hero-box.tight {
-  padding: 20px 22px;
-  border-radius: var(--r-12);
-}
-.hero-box h2 {
-  font-size: var(--fs-24);
+.page-hero h1 {
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: .4px;
+  letter-spacing: .3px;
 }
-.hero-box p {
-  margin-top: 6px;
+.page-hero .brand-line {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+.page-hero .sub {
+  margin-top: 8px;
   color: var(--text-3);
-  font-size: var(--fs-13);
-}
-.hero-box .row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-  flex-wrap: wrap;
+  font-size: 14px;
+  max-width: 560px;
+  line-height: 1.6;
 }
 
-/* ---- 紧凑入口卡 ---- */
-.quick-entry-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+/* ---- 快捷入口行 ---- */
+.quick-row {
+  display: flex; gap: 10px; margin-bottom: 28px;
 }
-.quick-entry {
-  padding: 14px 16px;
+.quick-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
   background: var(--bg-2);
   border: 1px solid var(--border);
-  border-radius: var(--r-12);
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  color: var(--text-1);
+  font-size: 13px;
   cursor: pointer;
   transition: all var(--t-fast);
 }
-.quick-entry:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-.quick-entry .icon {
-  width: 34px; height: 34px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(159,122,234,.25), rgba(159,122,234,.08));
-  color: var(--accent);
-}
-.quick-entry .txt .t {
-  font-size: var(--fs-14);
-  font-weight: 600;
-  color: var(--text-1);
-}
-.quick-entry .txt .s {
-  font-size: var(--fs-11);
-  color: var(--text-3);
-  margin-top: 2px;
-}
+.quick-chip:hover { border-color: var(--accent); color: var(--accent); }
+.quick-chip.accent { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
 /* ---- 数据药丸 ---- */
 .stats-grid {
@@ -269,144 +241,137 @@
   gap: 20px;
 }
 
-/* ---- 排行榜 · 三列榜单 ---- */
-.charts-box {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+/* ---- 媒体块列表（歌单/专辑等） ---- */
+.media-list {
+  display: flex; flex-direction: column;
+}
+.media-block {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.media-block:hover { background: var(--bg-2); }
+.media-cover {
+  width: 52px; height: 52px; border-radius: 10px;
+  flex-shrink: 0;
+}
+.media-body { min-width: 0; flex: 1; }
+.media-title {
+  font-size: 14px; font-weight: 500; color: var(--text-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.media-sub {
+  font-size: 12px; color: var(--text-3); margin-top: 3px;
+}
+.media-badge {
+  font-size: 10px; padding: 3px 8px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ---- 歌手行 ---- */
+.artist-scroll {
+  display: flex; gap: 16px; overflow-x: auto;
+  padding: 4px 0; margin-bottom: 24px;
+  scrollbar-width: none;
+}
+.artist-scroll::-webkit-scrollbar { display: none; }
+.artist-chip {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; cursor: pointer; flex-shrink: 0;
+  transition: transform var(--t-fast);
+}
+.artist-chip:hover { transform: translateY(-2px); }
+.artist-chip .ring {
+  width: 64px; height: 64px; border-radius: 999px;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.artist-chip .ring .inner {
+  width: 100%; height: 100%; border-radius: 999px;
+  background: linear-gradient(135deg, var(--c1), var(--c2));
+}
+.artist-chip .name {
+  font-size: 12px; color: var(--text-2); text-align: center;
+  max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- AI 策略区 ---- */
+.ai-strategy-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border);
+  border-radius: 14px; overflow: hidden;
+  margin-bottom: 32px;
+}
+.ai-strategy-item {
+  padding: 28px 24px;
+  background: var(--bg-2);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.ai-strategy-item:hover { background: var(--bg-3); }
+.ai-strategy-item .icon-lg {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--accent-soft);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); margin-bottom: 16px;
+}
+.ai-strategy-item h3 {
+  font-size: 16px; font-weight: 600; margin-bottom: 6px;
+}
+.ai-strategy-item p {
+  font-size: 13px; color: var(--text-3); line-height: 1.6;
+}
+
+/* ---- 排行榜三列 ---- */
+.chart-columns {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border);
+  border-radius: 14px; overflow: hidden;
+  margin-bottom: 28px;
 }
 .chart-col {
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-12);
-  padding: 16px;
+  background: var(--bg-2); padding: 20px;
 }
 .chart-col h3 {
-  font-size: var(--fs-15);
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-size: 15px; font-weight: 600; margin-bottom: 4px;
 }
-.chart-col .sub {
-  font-size: var(--fs-11);
-  color: var(--text-3);
-  margin-bottom: 12px;
+.chart-col .muted {
+  font-size: 11px; color: var(--text-3); margin-bottom: 16px;
 }
-.chart-col .song {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 4px;
-  border-radius: 8px;
-  font-size: var(--fs-12);
-  cursor: pointer;
+.chart-song {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; cursor: pointer; border-bottom: 1px solid var(--border);
+  font-size: 13px;
 }
-.chart-col .song:hover { background: var(--bg-3); }
-.chart-col .song .idx {
-  width: 22px;
-  color: var(--text-3);
-  font-weight: 600;
+.chart-song:last-child { border-bottom: none; }
+.chart-song:hover { color: var(--accent); }
+.chart-song .rank {
+  width: 24px; font-weight: 700; color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
-.chart-col .song .meta .t {
-  color: var(--text-1);
-  font-size: var(--fs-13);
+.chart-song .rank.top { color: var(--accent); }
+.chart-song .info { flex: 1; min-width: 0; }
+.chart-song .info .t { color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-song .info .a { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.chart-song .tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 999px;
+  flex-shrink: 0;
 }
-.chart-col .song .meta .a {
-  color: var(--text-3);
-  font-size: var(--fs-11);
-  margin-top: 2px;
-}
+.chart-song .tag.ok { color: var(--good); background: rgba(74,222,128,.08); }
+.chart-song .tag.miss { color: var(--warn); background: rgba(251,191,36,.08); }
 
-/* ---- 歌单详情 头部 ---- */
-.playlist-detail-head {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 24px;
-  padding: 8px 4px 20px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--border);
-}
-.pl-cover-lg {
-  width: 220px; height: 220px;
-  border-radius: var(--r-14);
-  background: linear-gradient(135deg, #6a5acd, #2b1d4d);
-  box-shadow: var(--shadow-md);
-}
-.pl-info .tag {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: var(--fs-11);
-  margin-bottom: 10px;
-}
-.pl-info h1 {
-  font-size: var(--fs-32);
-  font-weight: 700;
-}
-.pl-info .desc {
-  margin-top: 12px;
-  color: var(--text-3);
-  font-size: var(--fs-13);
-  line-height: 1.7;
-}
-.pl-meta-row {
-  margin-top: 16px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ---- AI 中心 · 卡片网格 ---- */
-.ai-cards-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-top: 16px;
-}
-.ai-card-pill {
-  padding: 18px;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-12);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  cursor: pointer;
-  transition: all var(--t-fast);
-}
-.ai-card-pill:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-.ai-card-pill .h {
-  font-size: var(--fs-15);
-  font-weight: 600;
-  color: var(--text-1);
-}
-.ai-card-pill .d {
-  font-size: var(--fs-12);
-  color: var(--text-3);
-  line-height: 1.6;
-}
-.ai-card-pill .f {
-  margin-top: 6px;
-  font-size: var(--fs-11);
-  color: var(--accent);
-  font-weight: 500;
-}
-
-/* ---- 新增类 · 小响应式 ---- */
+/* ============================================================
+   Pages · 响应式 v2
+   ============================================================ */
 @media (max-width: 768px) {
-  .quick-entry-grid { grid-template-columns: 1fr; gap: 10px; }
-  .charts-box { grid-template-columns: 1fr; }
-  .ai-cards-row { grid-template-columns: 1fr; }
-  .playlist-detail-head {
-    grid-template-columns: 1fr;
-    text-align: center;
-    justify-items: center;
-  }
-  .pl-cover-lg { width: 160px; height: 160px; }
-  .hero-box { padding: 20px; }
-  .hero-box h2 { font-size: 18px; }
+  .page-hero { padding: 18px 0 16px; margin-bottom: 16px; }
+  .page-hero h1 { font-size: 22px; }
+  .quick-row { flex-wrap: wrap; }
+  .ai-strategy-grid { grid-template-columns: 1fr; }
+  .chart-columns { grid-template-columns: 1fr; }
+  .artist-scroll { gap: 12px; }
+  .artist-chip .ring { width: 52px; height: 52px; }
 }

@@ -1,20 +1,69 @@
 /* ============================================================
    页面模块：每个页面一个渲染函数，内容完全依赖 data.js
-   所有页面都输出到同一个 body 容器 (page-body)，
-   通过路由切换。所有的卡片 / 行 都挂载点击事件，
-   点击后使用 Player 播放该歌曲。
+   视觉语言：夜晚沉浸听音空间 · 去卡片化 · 媒体块布局
+   所有页面输出到同一个 body 容器 (page-body)，通过路由切换
    ============================================================ */
 
 const Pages = (() => {
   const $ = (id) => document.getElementById(id);
 
   // ---- helpers ----
+
+  /** 页面通用头部 */
+  function pageHero(title, sub, { brand = "" } = {}) {
+    return `
+      <div class="page-hero anim-fade-up">
+        ${brand ? `<div class="brand-line">${brand}</div>` : ""}
+        <h1>${title}</h1>
+        ${sub ? `<p class="sub">${sub}</p>` : ""}
+      </div>`;
+  }
+
+  /** 快捷入口行 */
+  function quickRow(items) {
+    return `
+      <div class="quick-row anim-fade-up stagger-1">
+        ${items.map((it, i) =>
+          `<button class="quick-chip${it.accent ? " accent" : ""}" data-goto="${it.goto}">
+            ${it.icon ? `<span>${it.icon}</span>` : ""}${it.label}
+          </button>`).join("")}
+      </div>`;
+  }
+
+  /** 媒体块 (歌单/专辑 列表项) */
+  function mediaBlock(item, i) {
+    const [c1, c2] = colorOf(i + 3);
+    const badge = item.type === "ai"
+      ? `<span class="media-badge">AI</span>`
+      : (item.type === "official" ? `<span class="media-badge" style="background:rgba(255,255,255,0.06);color:var(--text-2)">官方</span>` : "");
+    return `
+      <div class="media-block anim-fade-up stagger-${Math.min(i % 5 + 1, 5)}" data-playlist="${item.id || ""}" data-album="${item.albumId || ""}">
+        <div class="media-cover cover" style="--c1:${c1};--c2:${c2}"></div>
+        <div class="media-body">
+          <div class="media-title">${item.title}</div>
+          <div class="media-sub">${item.sub || (item.tracks ? item.tracks + " 首 · " + item.duration : item.artist + " · " + item.year)}</div>
+        </div>
+        ${badge}
+      </div>`;
+  }
+
+  /** 歌手圆环 chip */
+  function artistChip(ar, i) {
+    const [c1, c2] = colorOf(i + 7);
+    return `
+      <div class="artist-chip" data-artist="${ar.id}">
+        <div class="ring"><div class="inner" style="background:linear-gradient(135deg,${c1},${c2})"></div></div>
+        <span class="name">${ar.name}</span>
+      </div>`;
+  }
+
+  /** 歌曲行 */
   function rowFor(track, i, { showNum = true, showLocal = false, isLocal = true } = {}) {
     const [c1, c2] = colorOf(i);
     return `
-      <div class="track-row" data-track="${track.id}">
+      <div class="track-row anim-fade-up stagger-${Math.min(i % 5 + 1, 5)}" data-track="${track.id}">
         <div class="track-num">
-          ${showNum ? `<span class="t-num">${String(i + 1).padStart(2, "0")}</span><span class="t-play">▶</span>` : ``}
+          ${showNum ? `<span class="t-num">${String(i + 1).padStart(2, "0")}</span><span class="t-play">▶</span>` : ""}
         </div>
         <div class="track-info">
           <div class="track-cover-sm" style="--c1:${c1};--c2:${c2}"></div>
@@ -26,7 +75,7 @@ const Pages = (() => {
         <div class="track-col">${track.genre}</div>
         ${showLocal
           ? `<div><span class="local-status ${isLocal ? "ok" : "no"}">${isLocal ? "✓ 已收录" : "✗ 本地暂无"}</span></div>`
-          : ``}
+          : ""}
         <div class="track-dur">${fmtDur(track.dur)}</div>
         <div class="track-act">
           <button class="icon-btn" title="收藏">♡</button>
@@ -34,47 +83,12 @@ const Pages = (() => {
       </div>`;
   }
 
-  function playlistCard(p, i) {
-    const [c1, c2] = colorOf(i + 4);
-    const badge = p.type === "ai" ? `<span class="ai-badge">AI</span>` : (p.type === "official" ? `<span class="ai-badge" style="background:rgba(255,255,255,0.08);color:#fff">官方</span>` : "");
-    return `
-      <div class="playlist-card" data-playlist="${p.id}">
-        <div class="cover playlist-cover" style="--c1:${c1};--c2:${c2}">
-          ${badge}
-          <span class="play-hint">▶</span>
-        </div>
-        <div class="playlist-title">${p.title}</div>
-        <div class="playlist-sub">${p.tracks} 首 · ${p.duration}</div>
-      </div>`;
-  }
-
-  function albumCard(a, i) {
-    const [c1, c2] = colorOf(i + 1);
-    return `
-      <div class="playlist-card" data-album="${a.id}">
-        <div class="cover playlist-cover" style="--c1:${c1};--c2:${c2}">
-          <span class="play-hint">▶</span>
-        </div>
-        <div class="playlist-title">${a.title}</div>
-        <div class="playlist-sub">${a.artist} · ${a.year}</div>
-      </div>`;
-  }
-
-  function artistCard(ar, i) {
-    const [c1, c2] = colorOf(i + 7);
-    return `
-      <div class="artist-card" data-artist="${ar.id}">
-        <div class="artist-cover" style="--c1:${c1};--c2:${c2}"></div>
-        <div class="playlist-title" style="margin-top:14px">${ar.name}</div>
-        <div class="playlist-sub">${ar.tag} · ${ar.listeners} 听众</div>
-      </div>`;
-  }
-
+  /** 榜单行 (紧凑版) */
   function chartRow(c, i) {
     const [c1, c2] = colorOf(i + 2);
     return `
-      <div class="track-row chart-row">
-        <div class="track-num" style="font-size:15px;font-weight:700;color:${i < 3 ? '#9f7aea' : 'var(--text-2)'}">${c.rank}</div>
+      <div class="track-row chart-row" data-track="${c.local ? "t" + String(i + 1).padStart(2, "0") : ""}">
+        <div class="track-num" style="font-size:15px;font-weight:700;color:${i < 3 ? "#9f7aea" : "var(--text-2)"}">${c.rank}</div>
         <div class="track-info">
           <div class="track-cover-sm" style="--c1:${c1};--c2:${c2}"></div>
           <div class="track-meta">
@@ -90,86 +104,135 @@ const Pages = (() => {
       </div>`;
   }
 
-  // ---- 页面：首页（精简版） ----
+  // ============================================================
+  // 页面：首页
+  // ============================================================
   function home() {
+    const totalTracks = TRACKS.length;
     return `
-      <section class="page-section">
-        <div class="page-intro-hero" style="padding:10px 4px 20px;margin-bottom:18px">
-          <h2 style="margin-top:4px">在自己的曲库里，听见自己。</h2>
-          <p>私有化部署 · Web / APP 互通 · 全链路实时同步</p>
-        </div>
+      ${pageHero("在自己的曲库里，听见自己。", "私有化部署 · AI 推荐 · Web / APP 互通 · 全链路实时同步", { brand: "MuseBox · 私有化 AI 音乐服务器" })}
 
-        <div class="banner" id="banner" style="height:160px;margin-bottom:24px">
-          ${BANNERS.map((b, i) => `
-            <div class="banner-slide ${i === 0 ? "is-active" : ""}" style="padding:26px 32px;--b-c1:${b.c1};--b-c2:${b.c2}">
-              <span class="banner-tag ${b.isAI ? "is-ai" : ""}">${b.tag}</span>
-              <div class="banner-title" style="font-size:20px;margin-top:8px">${b.title}</div>
-              <div class="banner-sub" style="font-size:13px;color:var(--text-2);max-width:520px">${b.sub}</div>
-              <button class="banner-cta" style="margin-top:2px" data-go-playlist="p0${i}">▶ 立即播放</button>
-            </div>`).join("")}
-          <div class="banner-dots" style="position:absolute;right:24px;bottom:14px">
-            ${BANNERS.map((_, i) => `<span class="banner-dot ${i === 0 ? "is-active" : ""}" data-banner-idx="${i}"></span>`).join("")}
-          </div>
+      <div class="banner anim-scale-in" id="banner" style="margin-bottom:28px">
+        ${BANNERS.map((b, i) => `
+          <div class="banner-slide ${i === 0 ? "is-active" : ""}" style="--b-c1:${b.c1};--b-c2:${b.c2}">
+            <span class="banner-tag ${b.isAI ? "is-ai" : ""}">${b.tag}</span>
+            <div class="banner-title">${b.title}</div>
+            <div class="banner-sub">${b.sub}</div>
+            <button class="banner-cta" data-go-playlist="p0${i}">▶ 立即播放</button>
+          </div>`).join("")}
+        <div class="banner-dots">
+          ${BANNERS.map((_, i) => `<span class="banner-dot ${i === 0 ? "is-active" : ""}" data-banner-idx="${i}"></span>`).join("")}
         </div>
-      </section>
+      </div>
 
-      <section class="page-section">
+      ${quickRow([
+        { label: "全部歌曲", sub: `${totalTracks} 首`, icon: "♪", goto: "library", accent: true },
+        { label: "全网热榜", sub: "实时同步", icon: "⚡", goto: "charts" },
+        { label: "AI 推荐", sub: "智能匹配", icon: "⟐", goto: "ai" },
+      ])}
+
+      <section class="page-section anim-fade-up stagger-1">
         <div class="section-head">
           <h3 class="section-title">今日推荐</h3>
-          <button class="section-more" data-goto="ai">查看全部 AI 功能 →</button>
+          <button class="section-more" data-goto="discover">歌单广场 →</button>
         </div>
-        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
-          ${PLAYLISTS.slice(0, 6).map(playlistCard).join("")}
+        <div class="media-list">
+          ${PLAYLISTS.slice(0, 5).map((p, i) => mediaBlock({
+            title: p.title,
+            sub: `${p.tracks} 首 · ${p.duration}`,
+            type: p.type,
+          }, i)).join("")}
         </div>
       </section>
 
-      <section class="page-section">
+      <section class="page-section anim-fade-up stagger-2">
         <div class="section-head">
           <h3 class="section-title">最近播放</h3>
-          <button class="section-more" data-goto="library">浏览全部 1284 首 →</button>
+          <button class="section-more" data-goto="library">浏览全部 →</button>
         </div>
         <div class="track-list">
           ${pickN(TRACKS, 5, 2).map((t, i) => rowFor(t, i)).join("")}
         </div>
       </section>
 
-      <section class="page-section">
+      <section class="page-section anim-fade-up stagger-3">
         <div class="section-head">
           <h3 class="section-title">全网热榜</h3>
           <button class="section-more" data-goto="charts">完整榜单 →</button>
         </div>
-        <div class="track-list">
-          ${CHARTS.slice(0, 5).map(chartRow).join("")}
+        <div class="chart-columns">
+          <div class="chart-col">
+            <h3>全球热歌</h3>
+            <div class="muted">主流平台实时同步</div>
+            ${CHARTS.slice(0, 5).map((c, i) => `
+              <div class="chart-song" data-track="${c.local ? "t" + String(i + 1).padStart(2, "0") : ""}">
+                <span class="rank${i < 3 ? " top" : ""}">${String(c.rank).padStart(2, "0")}</span>
+                <div class="info"><div class="t">${c.title}</div><div class="a">${c.artist}</div></div>
+                <span class="tag ${c.local ? "ok" : "miss"}">${c.local ? "已收录" : "暂无"}</span>
+              </div>`).join("")}
+          </div>
+          <div class="chart-col">
+            <h3>本周新曲</h3>
+            <div class="muted">曲库最新入库</div>
+            ${pickN(TRACKS, 5, 5).map((t, i) => `
+              <div class="chart-song" data-track="${t.id}">
+                <span class="rank${i < 3 ? " top" : ""}">${String(i + 1).padStart(2, "0")}</span>
+                <div class="info"><div class="t">${t.title}</div><div class="a">${t.artist}</div></div>
+                <span class="tag ok">已收录</span>
+              </div>`).join("")}
+          </div>
+          <div class="chart-col">
+            <h3>本地热播</h3>
+            <div class="muted">本站用户播放最多</div>
+            ${pickN(TRACKS, 5, 8).map((t, i) => `
+              <div class="chart-song" data-track="${t.id}">
+                <span class="rank${i < 3 ? " top" : ""}">${String(i + 1).padStart(2, "0")}</span>
+                <div class="info"><div class="t">${t.title}</div><div class="a">${t.artist}</div></div>
+                <span class="tag ok">已收录</span>
+              </div>`).join("")}
+          </div>
         </div>
       </section>
     `;
   }
 
-  // ---- 页面：歌单广场 ----
+  // ============================================================
+  // 页面：歌单广场
+  // ============================================================
   function discover() {
     return `
-      <section class="page-section">
-        <div class="page-intro-hero" style="padding:10px 4px 20px;margin-bottom:18px">
-          <h2 style="margin-top:4px">歌单广场</h2>
-          <p>AI 每日推荐 + 官方精选，点击任意歌单即可开始播放</p>
-        </div>
+      ${pageHero("歌单广场", "AI 每日推荐 + 官方精选 + 用户创作 · 点击任意歌单即可浏览详情")}
 
-        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:22px">
-          ${PLAYLISTS.map(playlistCard).join("")}
-        </div>
-      </section>
+      ${quickRow([
+        { label: "全部歌曲", icon: "♪", goto: "library", accent: true },
+        { label: "全网热榜", icon: "⚡", goto: "charts" },
+        { label: "AI 推荐中心", icon: "⟐", goto: "ai" },
+      ])}
 
       <section class="page-section">
         <div class="section-head">
-          <h3 class="section-title">新歌速递</h3>
-          <button class="section-more" data-goto="artists">全部歌手 →</button>
+          <h3 class="section-title">推荐歌单 · ${PLAYLISTS.length} 张</h3>
         </div>
-        <div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">
-          ${ARTISTS.slice(0, 6).map(artistCard).join("")}
+        <div class="media-list">
+          ${PLAYLISTS.map((p, i) => mediaBlock({
+            title: p.title,
+            sub: `${p.tracks} 首 · ${p.duration}`,
+            type: p.type,
+          }, i)).join("")}
         </div>
       </section>
 
-      <section class="page-section">
+      <section class="page-section anim-fade-up stagger-1">
+        <div class="section-head">
+          <h3 class="section-title">热门歌手</h3>
+          <button class="section-more" data-goto="artists">全部歌手 →</button>
+        </div>
+        <div class="artist-scroll">
+          ${ARTISTS.map(artistChip).join("")}
+        </div>
+      </section>
+
+      <section class="page-section anim-fade-up stagger-2">
         <div class="section-head">
           <h3 class="section-title">本地曲库最新</h3>
           <button class="section-more" data-goto="library">查看全部 ${TRACKS.length} 首 →</button>
@@ -181,177 +244,171 @@ const Pages = (() => {
     `;
   }
 
-  // ---- 页面：AI 推荐中心 ----
+  // ============================================================
+  // 页面：AI 推荐中心
+  // ============================================================
   function aiCenter() {
     return `
-      <section class="page-section">
-        <div class="page-intro-hero">
-          <div class="ph-type" style="color:var(--accent)">AI · 智能推荐中心</div>
-          <h2 style="margin-top:6px">用语言描述你想听的心情</h2>
-          <p>输入情绪、场景、关键词，AI 会从你的本地曲库挑选最合适的歌曲。所有推荐仅在本地计算。</p>
-        </div>
+      ${pageHero("AI 智能推荐中心", "用语言描述心情，AI 从本地曲库匹配最合适的歌曲。所有计算仅在本地完成。", { brand: "AI · 智能推荐" })}
 
-        <div class="ai-layout">
-          <div class="admin-panel">
-            <h3>生成一张歌单</h3>
-            <div class="ai-input">
-              <textarea placeholder="例如：一个人在深夜的地铁里，有点疲惫，想听听慢一点、有氛围感的电子乐。"></textarea>
-            </div>
-            <div class="ai-pill-row">
-              <button class="ai-pill">🌧 下雨天 · 专注</button>
-              <button class="ai-pill">☕ 清晨 · 咖啡</button>
-              <button class="ai-pill">🌃 深夜 · 微醺</button>
-              <button class="ai-pill">🏃 跑步 · 中速节奏</button>
-              <button class="ai-pill">📚 低干扰 · 阅读</button>
-              <button class="ai-pill">🎮 游戏 · 合成器</button>
-            </div>
-            <div style="margin-top:20px">
-              <button class="ai-card-cta" id="btn-gen">⟐ 让 AI 生成歌单</button>
-              <button class="ph-ghost" style="margin-left:8px;padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">查看历史生成</button>
-            </div>
+      <div class="ai-strategy-grid anim-fade-up stagger-1">
+        <div class="ai-strategy-item" data-go-playlist="ai-daily">
+          <div class="icon-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 6.9L21 10l-5.5 4 1.7 7L12 17.8 6.8 21l1.7-7L3 10l6.6-1.1z"></path></svg>
           </div>
-
-          <div class="admin-panel">
-            <h3>你的听歌画像</h3>
-            <p style="font-size:var(--fs-12);color:var(--text-3);margin-bottom:14px">基于近 30 天 3284 分钟播放量，AI 自动分析。</p>
-            ${USER_PROFILE.top_genres.map(g => `
-              <div style="display:grid;grid-template-columns:80px 1fr 48px;gap:10px;align-items:center;margin-bottom:10px;font-size:var(--fs-13)">
-                <div>${g.name}</div>
-                <div class="bar" style="height:6px;background:var(--bg-3);border-radius:999px;overflow:hidden"><div style="height:100%;width:${g.pct * 3}%;background:linear-gradient(90deg,var(--accent),#c9b6ff);border-radius:999px"></div></div>
-                <div style="color:var(--text-3);font-size:var(--fs-12);text-align:right">${g.pct}%</div>
-              </div>`).join("")}
-            <div class="mini-spark">${USER_PROFILE.listening_7d.map(m => `<span style="height:${m * 0.25}px"></span>`).join("")}</div>
-            <div style="margin-top:8px;font-size:var(--fs-11);color:var(--text-3)">过去 7 天每日收听时长</div>
-          </div>
+          <h3>每日个性化推荐</h3>
+          <p>基于你的播放、收藏、跳过行为，每日自动生成 10 首专属歌单。越听越懂你。</p>
         </div>
+        <div class="ai-strategy-item" id="btn-gen">
+          <div class="icon-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <h3>自然语言生成歌单</h3>
+          <p>输入场景、情绪、关键词，AI 即时匹配歌曲。例如："深夜地铁里的慢电子乐"。</p>
+        </div>
+        <div class="ai-strategy-item" data-goto="charts">
+          <div class="icon-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+          </div>
+          <h3>全网热歌 · 本地补齐</h3>
+          <p>聚合全网热搜，标注本地有无。识别缺失歌曲，一键补齐你的曲库。</p>
+        </div>
+      </div>
 
-        <section class="page-section" style="margin-top:24px">
+      <section class="page-section anim-fade-up stagger-2">
+        <div class="section-head">
           <h3 class="section-title">AI 生成的推荐歌单</h3>
-          <div class="card-grid">
-            ${PLAYLISTS.filter(p => p.type === "ai").map(playlistCard).join("")}
-          </div>
-        </section>
+        </div>
+        <div class="media-list">
+          ${PLAYLISTS.filter(p => p.type === "ai").map((p, i) => mediaBlock({
+            title: p.title,
+            sub: `${p.tracks} 首 · ${p.duration}`,
+            type: "ai",
+          }, i)).join("")}
+        </div>
+      </section>
 
-        <section class="page-section">
+      <section class="page-section anim-fade-up stagger-3">
+        <div class="section-head">
+          <h3 class="section-title">你的听歌画像</h3>
+        </div>
+        <div class="profile-bar-chart">
+          <p style="font-size:12px;color:var(--text-3);margin-bottom:16px">基于近 30 天 ${USER_PROFILE.listen_minutes} 分钟播放量，AI 自动分析</p>
+          ${USER_PROFILE.top_genres.map(g => `
+            <div class="pbc-row">
+              <div>${g.name}</div>
+              <div class="pbc-bar"><div class="pbc-fill" style="width:${g.pct * 3}%"></div></div>
+              <div class="pbc-val">${g.pct}%</div>
+            </div>`).join("")}
+          <div class="mini-spark">${USER_PROFILE.listening_7d.map(m => `<span style="height:${m * 0.25}px"></span>`).join("")}</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-3)">过去 7 天每日收听时长</div>
+        </div>
+      </section>
+
+      <section class="page-section anim-fade-up stagger-4">
+        <div class="section-head">
           <h3 class="section-title">相似推荐 · 基于当前播放</h3>
-          <p style="color:var(--text-3);font-size:var(--fs-13);margin-bottom:14px">与「Starlit Drive · Aurora Lane」在风格、情绪、节奏上相近的歌曲</p>
-          <div class="track-list">
-            ${pickN(TRACKS, 8, 1).map((t, i) => rowFor(t, i)).join("")}
-          </div>
-        </section>
+        </div>
+        <p style="color:var(--text-3);font-size:13px;margin-bottom:14px">与「Starlit Drive · Aurora Lane」在风格、情绪、节奏上相近的歌曲</p>
+        <div class="track-list">
+          ${pickN(TRACKS, 8, 1).map((t, i) => rowFor(t, i)).join("")}
+        </div>
       </section>
     `;
   }
 
-  // ---- 页面：全部歌曲 ----
+  // ============================================================
+  // 页面：全部歌曲
+  // ============================================================
   function library() {
     const genres = ["全部", "电子 / Synthwave", "独立民谣", "氛围 / Post-rock", "爵士 / Lounge", "Dream Pop", "乡村摇滚", "Post-Hardcore"];
     return `
-      <section class="page-section">
-        <div class="page-intro-hero" style="padding:10px 4px 18px;margin-bottom:14px">
-          <h2 style="margin-top:4px">全部歌曲 <em style="font-size:14px;color:var(--text-3);font-weight:400;margin-left:8px">${TRACKS.length} 首 · 本地已收录</em></h2>
-          <p>点击任意行即可播放 · 所有曲目来自本地 /music 目录 · 支持搜索、筛选、排序</p>
-        </div>
+      ${pageHero("全部歌曲", "点击任意行即可播放 · 所有曲目来自本地 /music 目录 · 支持搜索、筛选、排序", { brand: `本地曲库 · ${TRACKS.length} 首已收录` })}
 
-        <div class="filter-bar" style="margin-bottom:16px">
-          ${genres.map((g, i) => `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${g}</span>`).join("")}
-          <span class="filter-spacer"></span>
-          <span class="filter-pill is-active">默认排序</span>
-          <span class="filter-pill">按添加时间</span>
-          <span class="filter-pill">按播放次数</span>
-        </div>
+      <div class="filter-bar anim-fade-up stagger-1">
+        ${genres.map((g, i) => `<span class="filter-pill ${i === 0 ? "is-active" : ""}">${g}</span>`).join("")}
+        <span class="filter-spacer"></span>
+        <span class="filter-pill is-active">默认排序</span>
+        <span class="filter-pill">按添加时间</span>
+        <span class="filter-pill">按播放次数</span>
+      </div>
 
-        <div class="track-list" style="border:1px solid var(--border);border-radius:var(--r-12);overflow:hidden">
-          ${TRACKS.map((t, i) => rowFor(t, i)).join("")}
-        </div>
-      </section>
+      <div class="track-list anim-fade-up stagger-1">
+        ${TRACKS.map((t, i) => rowFor(t, i)).join("")}
+      </div>
     `;
   }
 
-  // ---- 页面：全网热榜 ----
+  // ============================================================
+  // 页面：全网热榜
+  // ============================================================
   function chartsPage() {
+    const localCount = CHARTS.filter(c => c.local).length;
+    const missCount = CHARTS.filter(c => !c.local).length;
     return `
-      <section class="page-section">
-        <div class="page-intro-hero" style="padding:10px 4px 18px;margin-bottom:14px">
-          <h2 style="margin-top:4px">全网热榜</h2>
-          <p>从主流音乐平台同步 · 标注「已收录」/「未收录」· 点击播放或标记想要</p>
-        </div>
+      ${pageHero("全网热榜", "从主流音乐平台同步 · 标注本地收录状态 · 点击播放或标记想要", { brand: "实时榜单 · " + CHARTS.length + " 首上榜" })}
 
-        <div class="track-list" style="border:1px solid var(--border);border-radius:var(--r-12);overflow:hidden">
-          ${CHARTS.map(chartRow).join("")}
+      <div class="chart-columns anim-fade-up stagger-1">
+        <div class="chart-col">
+          <h3>全球热歌 Top 50</h3>
+          <div class="muted">主流平台 · 实时聚合</div>
+          ${CHARTS.slice(0, 8).map((c, i) => `
+            <div class="chart-song" data-track="${c.local ? "t" + String(i + 1).padStart(2, "0") : ""}">
+              <span class="rank${i < 3 ? " top" : ""}">${String(c.rank).padStart(2, "0")}</span>
+              <div class="info"><div class="t">${c.title}</div><div class="a">${c.artist}</div></div>
+              <span class="tag ${c.local ? "ok" : "miss"}">${c.local ? "已收录" : "暂无"}</span>
+            </div>`).join("")}
         </div>
+        <div class="chart-col">
+          <h3>本周新曲</h3>
+          <div class="muted">曲库最近入库</div>
+          ${pickN(TRACKS, 8, 4).map((t, i) => `
+            <div class="chart-song" data-track="${t.id}">
+              <span class="rank${i < 3 ? " top" : ""}">${String(i + 1).padStart(2, "0")}</span>
+              <div class="info"><div class="t">${t.title}</div><div class="a">${t.artist}</div></div>
+              <span class="tag ok">已收录</span>
+            </div>`).join("")}
+        </div>
+        <div class="chart-col">
+          <h3>本地热播</h3>
+          <div class="muted">本站用户播放最多</div>
+          ${pickN(TRACKS, 8, 8).map((t, i) => `
+            <div class="chart-song" data-track="${t.id}">
+              <span class="rank${i < 3 ? " top" : ""}">${String(i + 1).padStart(2, "0")}</span>
+              <div class="info"><div class="t">${t.title}</div><div class="a">${t.artist}</div></div>
+              <span class="tag ok">已收录</span>
+            </div>`).join("")}
+        </div>
+      </div>
 
-        <div class="ai-card" style="margin-top:24px;grid-template-columns:1fr;padding:20px 24px">
-          <div>
-            <h3 class="ai-card-title" style="font-size:16px;margin-top:0">与你的曲库匹配情况</h3>
-            <p class="ai-card-sub" style="margin-top:6px">热榜 ${CHARTS.length} 首中，本地已收录 ${CHARTS.filter(c => c.local).length} 首，未收录 ${CHARTS.filter(c => !c.local).length} 首</p>
-            <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-              <span class="ai-card-tag">✓ 已收录 ${Math.round(CHARTS.filter(c => c.local).length / CHARTS.length * 100)}%</span>
-              <span class="ai-card-tag">热门艺人：${ARTISTS.slice(0, 4).map(a => a.name).join("、")}</span>
-            </div>
+      <div class="ai-card anim-fade-up stagger-2" style="padding:24px 28px">
+        <div>
+          <div class="ai-card-title" style="font-size:18px;margin-top:0">与你的曲库匹配情况</div>
+          <p class="ai-card-sub" style="margin-top:8px">热榜 ${CHARTS.length} 首中，本地已收录 <strong style="color:var(--good)">${localCount}</strong> 首，未收录 <strong style="color:var(--warn)">${missCount}</strong> 首</p>
+          <div class="ai-card-tags" style="margin-top:14px">
+            <span class="ai-card-tag">✓ 已收录 ${Math.round(localCount / CHARTS.length * 100)}%</span>
+            <span class="ai-card-tag">热门艺人：${ARTISTS.slice(0, 4).map(a => a.name).join("、")}</span>
+            <span class="ai-card-tag">${missCount} 首待补齐</span>
           </div>
         </div>
-      </section>
+      </div>
     `;
   }
 
-  // ---- 页面：歌手 ----
+  // ============================================================
+  // 页面：歌手
+  // ============================================================
   function artists() {
     return `
-      <section class="page-section">
-        <div class="page-intro-hero">
-          <h2>歌手 · ${ARTISTS.length} 位</h2>
-          <p>点击进入歌手主页，查看完整专辑、热门单曲与相似歌手推荐。</p>
-        </div>
-        <div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
-          ${ARTISTS.map(artistCard).join("")}
-        </div>
-      </section>
-    `;
-  }
+      ${pageHero("歌手", "点击进入歌手主页，查看完整专辑、热门单曲与相似歌手推荐。", { brand: ARTISTS.length + " 位艺术家" })}
+      <div class="artist-scroll anim-fade-up stagger-1">
+        ${ARTISTS.map(artistChip).join("")}
+      </div>
 
-  // ---- 页面：专辑 ----
-  function albums() {
-    return `
-      <section class="page-section">
-        <div class="page-intro-hero">
-          <h2>专辑 · ${ALBUMS.length} 张</h2>
-          <p>以专辑为单位的完整收藏 · 点击查看曲目列表与相似专辑。</p>
+      <section class="page-section anim-fade-up stagger-2">
+        <div class="section-head">
+          <h3 class="section-title">热门单曲</h3>
         </div>
-        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
-          ${ALBUMS.map(albumCard).join("")}
-        </div>
-      </section>
-    `;
-  }
-
-  // ---- 页面：文件夹 ----
-  function folders() {
-    return `
-      <section class="page-section">
-        <div class="page-intro-hero">
-          <h2>文件夹视图</h2>
-          <p>完全映射宿主机 /music 目录结构 · 直接以目录方式浏览与播放</p>
-        </div>
-        <div class="folder-breadcrumb">
-          <span>music</span><span class="sep">/</span>
-        </div>
-        <div class="folder-grid">
-          ${FOLDERS.map((f, i) => {
-            const [c1, c2] = colorOf(i);
-            return `
-              <div class="folder-item" data-folder="${f.path}">
-                <div class="folder-ic" style="background:${c1}22;color:${c1}">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
-                </div>
-                <div>
-                  <div class="folder-name">${f.name}</div>
-                  <div class="playlist-sub" style="margin-top:2px">${f.count} 首 · ${f.path}</div>
-                </div>
-              </div>`;
-          }).join("")}
-        </div>
-        <h3 class="section-title" style="margin-top:32px">当前目录下的歌曲</h3>
         <div class="track-list">
           ${pickN(TRACKS, 10, 0).map((t, i) => rowFor(t, i)).join("")}
         </div>
@@ -359,10 +416,61 @@ const Pages = (() => {
     `;
   }
 
-  // ---- 页面：个人中心 ----
+  // ============================================================
+  // 页面：专辑
+  // ============================================================
+  function albums() {
+    return `
+      ${pageHero("专辑", "以专辑为单位的完整收藏 · 点击查看曲目列表与相似专辑。", { brand: ALBUMS.length + " 张专辑" })}
+      <div class="media-list anim-fade-up stagger-1">
+        ${ALBUMS.map((a, i) => mediaBlock({
+          title: a.title,
+          sub: a.artist + " · " + a.year + " · " + a.tracks + " 首",
+          albumId: a.id,
+        }, i)).join("")}
+      </div>
+    `;
+  }
+
+  // ============================================================
+  // 页面：文件夹
+  // ============================================================
+  function folders() {
+    return `
+      ${pageHero("文件夹视图", "完全映射宿主机 /music 目录结构 · 直接以目录方式浏览与播放", { brand: FOLDERS.length + " 个目录" })}
+
+      <div class="folder-breadcrumb anim-fade-up">
+        <span>music</span><span class="sep">/</span>
+      </div>
+      <div class="folder-grid anim-fade-up stagger-1">
+        ${FOLDERS.map((f, i) => {
+          const [c1, c2] = colorOf(i);
+          return `
+            <div class="folder-item" data-folder="${f.path}">
+              <div class="folder-ic" style="background:${c1}22;color:${c1}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              </div>
+              <div>
+                <div class="folder-name">${f.name}</div>
+                <div class="playlist-sub" style="margin-top:2px">${f.count} 首 · ${f.path}</div>
+              </div>
+            </div>`;
+        }).join("")}
+      </div>
+
+      <h3 class="section-title anim-fade-up stagger-2" style="margin-top:28px">当前目录下的歌曲</h3>
+      <div class="track-list anim-fade-up stagger-2">
+        ${pickN(TRACKS, 10, 0).map((t, i) => rowFor(t, i)).join("")}
+      </div>
+    `;
+  }
+
+  // ============================================================
+  // 页面：个人中心
+  // ============================================================
   function profile() {
     return `
-      <section class="page-section">
+      <section class="page-section anim-fade-up">
         <div class="profile-head">
           <div class="avatar-lg">L</div>
           <div>
@@ -370,10 +478,10 @@ const Pages = (() => {
             <h2 class="profile-name">Listener_01</h2>
             <p class="profile-bio">在地铁和深夜咖啡馆听歌 · 偏爱 Dream-pop 和慢爵士。</p>
             <div class="profile-meta">
-              <span>🎧 ${USER_PROFILE.listen_minutes} 分钟总收听</span>
-              <span>♡ ${USER_PROFILE.fav_count} 首收藏</span>
-              <span>📀 ${USER_PROFILE.playlists} 张歌单</span>
-              <span>📅 加入于 2024 年 2 月</span>
+              <span>${USER_PROFILE.listen_minutes} 分钟总收听</span>
+              <span>${USER_PROFILE.fav_count} 首收藏</span>
+              <span>${USER_PROFILE.playlists} 张歌单</span>
+              <span>加入于 2024 年 2 月</span>
             </div>
             <div class="profile-ctas">
               <button class="primary">编辑资料</button>
@@ -383,14 +491,14 @@ const Pages = (() => {
           </div>
         </div>
 
-        <div class="stats-row">
+        <div class="stats-row anim-fade-up stagger-1">
           <div class="stat-block"><div class="stat-num">3,284</div><div class="stat-label">分钟 · 过去 30 天</div></div>
           <div class="stat-block"><div class="stat-num">182</div><div class="stat-label">收藏歌曲</div></div>
           <div class="stat-block"><div class="stat-num">28</div><div class="stat-label">收藏专辑</div></div>
           <div class="stat-block"><div class="stat-num">12</div><div class="stat-label">收藏歌手</div></div>
         </div>
 
-        <div class="col-tabs" style="margin-top:16px">
+        <div class="col-tabs anim-fade-up stagger-2" style="margin-top:16px">
           <button class="col-tab is-active" data-coltab="songs">收藏的歌曲</button>
           <button class="col-tab" data-coltab="albums">收藏的专辑</button>
           <button class="col-tab" data-coltab="artists">收藏的歌手</button>
@@ -402,18 +510,23 @@ const Pages = (() => {
       </section>
     `;
   }
+
   function profileColtab(type) {
     if (type === "songs") {
       return `<div class="track-list">${pickN(TRACKS, 10, 4).map((t, i) => rowFor(t, i)).join("")}</div>`;
     }
     if (type === "albums") {
-      return `<div class="card-grid">${ALBUMS.slice(0, 8).map(albumCard).join("")}</div>`;
+      return `<div class="media-list">${ALBUMS.slice(0, 8).map((a, i) => mediaBlock({
+        title: a.title, sub: a.artist + " · " + a.year, albumId: a.id,
+      }, i)).join("")}</div>`;
     }
     if (type === "artists") {
-      return `<div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${ARTISTS.slice(0, 8).map(artistCard).join("")}</div>`;
+      return `<div class="artist-scroll">${ARTISTS.slice(0, 8).map(artistChip).join("")}</div>`;
     }
     if (type === "playlists") {
-      return `<div class="card-grid">${PLAYLISTS.filter(p => p.type === "user").map(playlistCard).join("")}</div>`;
+      return `<div class="media-list">${PLAYLISTS.filter(p => p.type === "user").map((p, i) => mediaBlock({
+        title: p.title, sub: `${p.tracks} 首 · ${p.duration}`, type: "user",
+      }, i)).join("")}</div>`;
     }
     if (type === "history") {
       return `
@@ -430,12 +543,14 @@ const Pages = (() => {
     return "";
   }
 
-  // ---- 页面：歌单详情 ----
+  // ============================================================
+  // 页面：歌单详情
+  // ============================================================
   function playlistDetail(id) {
     const p = PLAYLISTS.find(pl => pl.id === id) || PLAYLISTS[0];
     const [c1, c2] = colorOf(p.id.charCodeAt(1));
     return `
-      <section class="page-section">
+      <section class="page-section anim-fade-up">
         <div class="playlist-hero">
           <div class="cover cover-lg" style="--c1:${c1};--c2:${c2}"></div>
           <div>
@@ -443,10 +558,10 @@ const Pages = (() => {
             <h2 class="ph-title">${p.title}</h2>
             <p class="ph-sub">${p.desc}</p>
             <div class="ph-meta">
-              <span>• by MuseBox</span>
-              <span>• ${p.tracks} 首 · ${p.duration}</span>
-              <span>• 创建于 2026-06-20</span>
-              <span>• 已被 1,284 人收藏</span>
+              <span>by MuseBox</span>
+              <span>${p.tracks} 首 · ${p.duration}</span>
+              <span>创建于 2026-06-20</span>
+              <span>已被 1,284 人收藏</span>
             </div>
             <div class="ph-ctas">
               <button class="ph-play" data-play-playlist="${p.id}">▶ 播放</button>
@@ -463,12 +578,14 @@ const Pages = (() => {
     `;
   }
 
-  // ---- 页面：搜索结果 ----
+  // ============================================================
+  // 页面：搜索结果
+  // ============================================================
   function searchResults(q) {
     const kw = (q || "").trim();
     const k = kw.toLowerCase();
     const byTrack = TRACKS.filter(t => !k || t.title.toLowerCase().includes(k) || t.artist.toLowerCase().includes(k));
-    const byAlbum = ALBUMS.filter(a => !k || a.title.toLowerCase().includes(k));
+    const byAlbum = ALBUMS.filter(a => !k || a.title.toLowerCase().includes(k) || a.artist.toLowerCase().includes(k));
     const byArtist = ARTISTS.filter(a => !k || a.name.toLowerCase().includes(k));
     const byPl = PLAYLISTS.filter(p => !k || p.title.toLowerCase().includes(k));
     const byChart = CHARTS.filter(c => !k || c.title.toLowerCase().includes(k));
@@ -479,52 +596,62 @@ const Pages = (() => {
       return text.replace(re, '<span class="hl">$1</span>');
     }
 
+    const total = byTrack.length + byAlbum.length + byArtist.length + byPl.length + byChart.length;
+
     return `
-      <section class="page-section">
-        <div class="page-intro-hero">
-          <h2>${kw ? `"${kw}" 的搜索结果` : "搜索"}</h2>
-          <p>共 ${byTrack.length + byAlbum.length + byArtist.length + byPl.length + byChart.length} 条结果，其中本地曲库 ${byTrack.length} 首</p>
-        </div>
+      ${pageHero(kw ? `"${kw}" 的搜索结果` : "搜索", `共 ${total} 条结果，其中本地曲库 ${byTrack.length} 首`, { brand: `${total} 条匹配` })}
 
-        <div class="search-group">
-          <h3 class="search-group-title">歌曲 · ${byTrack.length}</h3>
-          <div class="track-list">${byTrack.slice(0, 6).map((t, i) => rowFor({ ...t, title: hl(t.title), artist: hl(t.artist) }, i)).join("")}</div>
-        </div>
+      ${byTrack.length > 0 ? `
+      <div class="search-group anim-fade-up stagger-1">
+        <h3 class="search-group-title">歌曲 · ${byTrack.length}</h3>
+        <div class="track-list">${byTrack.slice(0, 8).map((t, i) => rowFor({ ...t, title: hl(t.title), artist: hl(t.artist) }, i)).join("")}</div>
+      </div>` : ""}
 
-        <div class="search-group">
-          <h3 class="search-group-title">专辑 · ${byAlbum.length}</h3>
-          <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${byAlbum.slice(0, 6).map(albumCard).join("")}</div>
-        </div>
+      ${byAlbum.length > 0 ? `
+      <div class="search-group anim-fade-up stagger-2">
+        <h3 class="search-group-title">专辑 · ${byAlbum.length}</h3>
+        <div class="media-list">${byAlbum.slice(0, 6).map((a, i) => mediaBlock({
+          title: hl(a.title), sub: a.artist + " · " + a.year, albumId: a.id,
+        }, i)).join("")}</div>
+      </div>` : ""}
 
-        <div class="search-group">
-          <h3 class="search-group-title">歌手 · ${byArtist.length}</h3>
-          <div class="artist-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${byArtist.slice(0, 6).map(artistCard).join("")}</div>
-        </div>
+      ${byArtist.length > 0 ? `
+      <div class="search-group anim-fade-up stagger-3">
+        <h3 class="search-group-title">歌手 · ${byArtist.length}</h3>
+        <div class="artist-scroll">${byArtist.slice(0, 6).map(artistChip).join("")}</div>
+      </div>` : ""}
 
-        <div class="search-group">
-          <h3 class="search-group-title">歌单 · ${byPl.length}</h3>
-          <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">${byPl.slice(0, 6).map(playlistCard).join("")}</div>
-        </div>
+      ${byPl.length > 0 ? `
+      <div class="search-group anim-fade-up stagger-4">
+        <h3 class="search-group-title">歌单 · ${byPl.length}</h3>
+        <div class="media-list">${byPl.slice(0, 6).map((p, i) => mediaBlock({
+          title: p.title, sub: `${p.tracks} 首 · ${p.duration}`, type: p.type,
+        }, i)).join("")}</div>
+      </div>` : ""}
 
-        <div class="search-group">
-          <h3 class="search-group-title">全网 · ${byChart.length}（标注本地有无）</h3>
-          <div class="track-list">${byChart.slice(0, 6).map(chartRow).join("")}</div>
-        </div>
-      </section>
+      ${byChart.length > 0 ? `
+      <div class="search-group anim-fade-up stagger-5">
+        <h3 class="search-group-title">全网 · ${byChart.length}（标注本地有无）</h3>
+        <div class="track-list">${byChart.slice(0, 6).map(chartRow).join("")}</div>
+      </div>` : ""}
+
+      ${total === 0 ? `
+      <div class="page-section anim-fade-up" style="text-align:center;padding:40px 0">
+        <p style="font-size:18px;color:var(--text-3)">没有找到与 "${kw}" 相关的结果</p>
+        <p style="margin-top:8px;font-size:13px;color:var(--text-dim)">试试其他关键词，或浏览曲库、歌单</p>
+      </div>` : ""}
     `;
   }
 
-  // ---- 页面：管理员后台 ----
+  // ============================================================
+  // 管理员后台（保持不变）
+  // ============================================================
   function admin() {
     return `
-      <section class="page-section">
-        <div class="page-intro-hero">
-          <h2>管理后台</h2>
-          <p>所有前台展示、AI 模型、曲库、用户权限均在这里配置。</p>
-        </div>
+      <section class="page-section anim-fade-up">
+        ${pageHero("管理后台", "所有前台展示、AI 模型、曲库、用户权限均在这里配置。", { brand: "Administrator" })}
 
         <div class="admin-layout">
-          <!-- 左侧菜单 -->
           <div>
             <div class="admin-side-menu">
               <div class="side-group-title" style="padding:4px 12px;font-size:11px;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase">数据总览</div>
@@ -554,7 +681,7 @@ const Pages = (() => {
 
   function admDashboard() {
     return `
-      <div class="admin-hero-row">
+      <div class="admin-hero-row anim-fade-up">
         <div class="admin-stat"><div class="as-num">${ADMIN_STATS.total_tracks}</div><div class="as-label">收录歌曲</div><div class="as-trend">+ 24 新扫描</div></div>
         <div class="admin-stat"><div class="as-num">${ADMIN_STATS.total_users}</div><div class="as-label">注册用户</div><div class="as-trend" style="color:var(--accent)">7 人在线</div></div>
         <div class="admin-stat"><div class="as-num">${ADMIN_STATS.total_plays_24h}</div><div class="as-label">24 小时播放</div><div class="as-trend">+ 12% vs 昨天</div></div>
@@ -623,7 +750,7 @@ const Pages = (() => {
           </table>
         </div>
         <div style="margin-top:14px;display:flex;gap:8px">
-          <button class="ai-card-cta">＋ 添加目录</button>
+          <button class="ai-card-cta" style="margin-top:0">＋ 添加目录</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">立即全量扫描</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">增量扫描</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">后台定时任务</button>
@@ -710,7 +837,7 @@ const Pages = (() => {
             </div>`).join("")}
         </div>
         <div style="margin-top:16px;display:flex;gap:8px">
-          <button class="ai-card-cta">＋ 添加模型</button>
+          <button class="ai-card-cta" style="margin-top:0">＋ 添加模型</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">调用统计</button>
         </div>
       </div>
@@ -811,7 +938,7 @@ const Pages = (() => {
           <div class="admin-stat" style="padding:16px"><div class="as-num" style="font-size:18px">最近备份</div><div class="as-label" style="margin-top:4px">2026-06-21 03:30 · 184 MB</div></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="ai-card-cta">立即备份</button>
+          <button class="ai-card-cta" style="margin-top:0">立即备份</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">导入配置</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">导出配置</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">从备份恢复</button>
@@ -832,7 +959,7 @@ const Pages = (() => {
           <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px;color:var(--text-3)">8</div><div class="as-label">缺失封面</div></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="ai-card-cta">一键修复</button>
+          <button class="ai-card-cta" style="margin-top:0">一键修复</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">歌词重新匹配</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">封面重新拉取</button>
         </div>
@@ -851,7 +978,7 @@ const Pages = (() => {
           <div class="admin-stat" style="padding:14px"><div class="as-num" style="font-size:20px">42 MB</div><div class="as-label">可释放空间</div></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="ai-card-cta">运行检测</button>
+          <button class="ai-card-cta" style="margin-top:0">运行检测</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">批量编辑</button>
         </div>
       </div>
@@ -862,11 +989,13 @@ const Pages = (() => {
     return `
       <div class="admin-panel">
         <h3>官方歌单编辑</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">
-          ${PLAYLISTS.filter(p => p.type === "official").map(playlistCard).join("")}
+        <div class="media-list">
+          ${PLAYLISTS.filter(p => p.type === "official").map((p, i) => mediaBlock({
+            title: p.title, sub: `${p.tracks} 首 · ${p.duration}`, type: "official",
+          }, i)).join("")}
         </div>
         <div style="margin-top:20px;display:flex;gap:8px">
-          <button class="ai-card-cta">新建官方歌单</button>
+          <button class="ai-card-cta" style="margin-top:0">新建官方歌单</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">用户公开歌单审核</button>
           <button class="ph-ghost" style="padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-1);font-size:var(--fs-13);background:transparent">首页推荐置顶位</button>
         </div>

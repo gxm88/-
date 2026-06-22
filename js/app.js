@@ -175,33 +175,51 @@ const App = (() => {
   }
 
   function bindCards(root) {
-    // 歌单卡 → 打开歌单详情
-    root.querySelectorAll(".playlist-card[data-playlist]").forEach(c => {
-      c.addEventListener("click", () => navigate("playlist-detail", c.dataset.playlist));
+    // 媒体块 → 打开歌单详情
+    root.querySelectorAll(".media-block[data-playlist]").forEach(c => {
+      c.addEventListener("click", () => {
+        const id = c.dataset.playlist;
+        if (id) navigate("playlist-detail", id);
+      });
     });
-    // 专辑卡 → 立即播放（从本地曲库匹配）
-    root.querySelectorAll(".playlist-card[data-album]").forEach(c => {
+    // 媒体块 (专辑) → 立即播放
+    root.querySelectorAll(".media-block[data-album]").forEach(c => {
       c.addEventListener("click", () => {
         const tracks = pickN(TRACKS, 8, c.dataset.album.charCodeAt(2) % 5);
         Player.playAll(tracks);
       });
     });
-    // 歌手卡 → 立即播放
-    root.querySelectorAll(".artist-card").forEach(c => {
+    // 歌手圆环 → 立即播放
+    root.querySelectorAll(".artist-chip[data-artist]").forEach(c => {
       c.addEventListener("click", () => {
         const tracks = pickN(TRACKS, 10, c.dataset.artist.charCodeAt(1) % 5);
         Player.playAll(tracks);
       });
     });
     // 文件夹 → 立即播放
-    root.querySelectorAll(".folder-item").forEach(c => {
+    root.querySelectorAll(".folder-item[data-folder]").forEach(c => {
       c.addEventListener("click", () => {
         const tracks = pickN(TRACKS, 10, c.dataset.folder.charCodeAt(5) % 5);
         Player.playAll(tracks);
       });
     });
+    // 榜单歌曲 → 播放（仅本地已收录的）
+    root.querySelectorAll(".chart-song[data-track]").forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.track;
+        const t = TRACKS.find(x => x.id === id);
+        if (t) Player.playAll([t]);
+      });
+    });
+    // AI 策略区 → 生成歌单或跳转
+    root.querySelectorAll(".ai-strategy-item[data-go-playlist]").forEach(el => {
+      el.addEventListener("click", () => {
+        const tracks = pickN(TRACKS, 10, el.dataset.goPlaylist.charCodeAt(1) % 5);
+        Player.playAll(tracks);
+      });
+    });
 
-    // track-row 单击（更自然） → 播放
+    // track-row 单击 → 播放
     root.querySelectorAll(".track-row[data-track]").forEach(row => {
       row.addEventListener("click", () => {
         const id = row.dataset.track;
@@ -219,10 +237,15 @@ const App = (() => {
       });
     });
 
-    // AI 生成歌单
+    // AI 生成歌单按钮
     const gen = root.querySelector("#btn-gen");
     if (gen) gen.addEventListener("click", () => {
       Player.playAll(pickN(TRACKS, 10, 2));
+    });
+
+    // 快捷入口 chip (部分有 data-goto 由全局委托处理，这里处理无 data-goto 的)
+    root.querySelectorAll(".quick-chip:not([data-goto])").forEach(chip => {
+      chip.addEventListener("click", () => Player.playAll(pickN(TRACKS, 8, 0)));
     });
   }
 
