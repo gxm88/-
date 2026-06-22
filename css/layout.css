@@ -312,6 +312,13 @@
   border: 1px solid rgba(159,122,234,.25);
   color: var(--text-1);
 }
+/* 选中时合并玻璃边框效果 */
+.side-item-accent.is-active {
+  background: var(--accent-soft);
+  border: 1px solid rgba(159,122,234,.4);
+  color: var(--accent);
+  font-weight: 500;
+}
 .side-item-accent em {
   font-style: normal;
   font-size: 10px;
