@@ -86,8 +86,21 @@ const API = (() => {
 
         // ---- 认证 ----
         if (path === "/auth/login" && method === "POST") {
-          const { role } = body || {};
-          return resolve({ ok: true, user: { name: role === "admin" ? "管理员" : "普通用户", role: role || "user" } });
+          const { username, password, role } = body || {};
+          // Mock 登录：任何用户名/密码都能登录，根据 username 判断角色
+          const isAdmin = username === "admin" || role === "admin";
+          const mockToken = "mock-token-" + Date.now();
+          return resolve({
+            ok: true,
+            token: mockToken,
+            user: {
+              id: isAdmin ? 1 : 2,
+              username: username || (isAdmin ? "admin" : "user"),
+              name: isAdmin ? "管理员" : "普通用户",
+              role: isAdmin ? "admin" : "user",
+              avatar: (username || isAdmin ? "A" : "U").charAt(0).toUpperCase()
+            }
+          });
         }
         if (path === "/auth/logout" && method === "POST") return resolve({ ok: true });
         if (path === "/auth/me") {
