@@ -504,6 +504,8 @@ const Player = (() => {
     // 全屏内播放控制
     const fsControls = $("fs-controls");
     if (fsControls) {
+      const mode = PLAY_MODES.find(m => m.key === state.playMode) || PLAY_MODES[0];
+      const effVol = state.muted ? 0 : state.volume;
       fsControls.innerHTML = `
         <button class="fs-ctrl-btn" id="fs-btn-prev" title="上一首">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9.5 12l10-6v12z"></path></svg>
@@ -518,12 +520,43 @@ const Player = (() => {
         </button>
       `;
 
+      // 工具行：播放模式 / 均衡器 / 睡眠定时 / 音量
+      const fsUtils = document.createElement("div");
+      fsUtils.className = "fs-utils";
+      fsUtils.innerHTML = `
+        <button class="fs-util-btn ${state.playMode !== "sequential" ? "is-active" : ""}" id="fs-btn-mode" title="${mode.desc}">
+          ${mode.icon} <span>${mode.label}</span>
+        </button>
+        <button class="fs-util-btn ${state.eq.enabled ? "is-active" : ""}" id="fs-btn-eq" title="均衡器">
+          ⟐ <span>均衡器</span>
+        </button>
+        <button class="fs-util-btn ${state.sleepTimer ? "is-active" : ""}" id="fs-btn-sleep" title="${state.sleepTimer ? `剩余 ${fmtTime(state.sleepRemaining)}` : "睡眠定时"}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <span>${state.sleepTimer ? fmtTime(state.sleepRemaining) : "睡眠"}</span>
+        </button>
+        <button class="fs-util-btn" id="fs-btn-volume" title="音量面板">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a5 5 0 0 1 0 6M19 7a8 8 0 0 1 0 10"></path></svg>
+          <span>${Math.round(effVol * 100)}%</span>
+        </button>
+      `;
+      fsControls.appendChild(fsUtils);
+
       const fsPlay = $("fs-btn-play");
       if (fsPlay) fsPlay.addEventListener("click", togglePlay);
       const fsPrev = $("fs-btn-prev");
       if (fsPrev) fsPrev.addEventListener("click", prev);
       const fsNext = $("fs-btn-next");
       if (fsNext) fsNext.addEventListener("click", next);
+
+      // 全屏内面板按钮事件
+      const fsModeBtn = $("fs-btn-mode");
+      if (fsModeBtn) fsModeBtn.addEventListener("click", cyclePlayMode);
+      const fsEqBtn = $("fs-btn-eq");
+      if (fsEqBtn) fsEqBtn.addEventListener("click", toggleEQPanel);
+      const fsSleepBtn = $("fs-btn-sleep");
+      if (fsSleepBtn) fsSleepBtn.addEventListener("click", toggleSleepPanel);
+      const fsVolBtn = $("fs-btn-volume");
+      if (fsVolBtn) fsVolBtn.addEventListener("click", toggleVolumePanel);
     }
 
     // Tab 切换按钮
@@ -754,14 +787,6 @@ const Player = (() => {
     const bp = $("btn-prev");
     if (bp && !bp.dataset.bound) { bp.dataset.bound = "1"; bp.addEventListener("click", prev); }
 
-    // 播放模式按钮
-    const bpmode = $("btn-play-mode");
-    if (bpmode && !bpmode.dataset.bound) {
-      bpmode.dataset.bound = "1";
-      bpmode.addEventListener("click", cyclePlayMode);
-      renderPlayModeButton();
-    }
-
     // 队列按钮
     const bq = $("btn-queue");
     if (bq && !bq.dataset.bound) {
@@ -802,36 +827,6 @@ const Player = (() => {
       bfav.addEventListener("click", toggleFavorite);
     }
 
-    // 均衡器按钮
-    const bEq = $("btn-eq");
-    if (bEq && !bEq.dataset.bound) {
-      bEq.dataset.bound = "1";
-      bEq.addEventListener("click", (e) => {
-        e.stopPropagation();
-        toggleEQPanel();
-      });
-    }
-
-    // 音量按钮
-    const bVol = $("btn-volume");
-    if (bVol && !bVol.dataset.bound) {
-      bVol.dataset.bound = "1";
-      bVol.addEventListener("click", (e) => {
-        e.stopPropagation();
-        toggleVolumePanel();
-      });
-    }
-
-    // 睡眠定时按钮
-    const bSleep = $("btn-sleep");
-    if (bSleep && !bSleep.dataset.bound) {
-      bSleep.dataset.bound = "1";
-      bSleep.addEventListener("click", (e) => {
-        e.stopPropagation();
-        toggleSleepPanel();
-      });
-    }
-
     // ---- 移动端按钮 ----
     const bpm = $("btn-play-m");
     if (bpm && !bpm.dataset.bound) {
@@ -850,6 +845,18 @@ const Player = (() => {
     if (bfavm && !bfavm.dataset.bound) {
       bfavm.dataset.bound = "1";
       bfavm.addEventListener("click", toggleFavorite);
+    }
+
+    // ---- 封面/元数据点击 -> 全屏（使用事件委托，更可靠） ----
+    const playerTrack = $("player-track-area");
+    if (playerTrack && !playerTrack.dataset.bound) {
+      playerTrack.dataset.bound = "1";
+      playerTrack.addEventListener("click", (e) => {
+        // 排除收藏按钮点击
+        const target = e.target.closest("button");
+        if (target && (target.id === "btn-fav" || target.id === "btn-fav-m")) return;
+        toggleFullscreen();
+      });
     }
 
     // 进度条拖拽
@@ -888,7 +895,7 @@ const Player = (() => {
       document.addEventListener("touchend", () => { dragging = false; });
     }
 
-    // 音量条
+    // 音量条拖拽
     const vol = document.querySelector(".vol-bar");
     if (vol && !vol.dataset.bound) {
       vol.dataset.bound = "1";
@@ -906,38 +913,25 @@ const Player = (() => {
       document.addEventListener("touchend", () => { dragging = false; });
     }
 
-    // 点击封面/非热键区域打开全屏
-    const playerCover = $("player-cover");
-    if (playerCover && !playerCover.dataset.bound) {
-      playerCover.dataset.bound = "1";
-      playerCover.addEventListener("click", toggleFullscreen);
-    }
-    const playerMeta = document.querySelector(".player-meta");
-    if (playerMeta && !playerMeta.dataset.bound) {
-      playerMeta.dataset.bound = "1";
-      playerMeta.addEventListener("click", toggleFullscreen);
-    }
-
     // 全局点击关闭面板
     document.addEventListener("click", (e) => {
       const eqPanel = $("eq-panel");
-      const volPanel = $("volume-panel");
+      const volumePanel = $("volume-panel");
       const sleepPanel = $("sleep-panel");
 
       if (eqPanel && eqPanel.classList.contains("is-open")) {
-        if (!eqPanel.contains(e.target) && e.target !== $("btn-eq") && !$("btn-eq")?.contains(e.target)) {
+        if (!eqPanel.contains(e.target)) {
           eqPanel.classList.remove("is-open");
           stopVisualizer();
-          renderEQButton();
         }
       }
-      if (volPanel && volPanel.classList.contains("is-open")) {
-        if (!volPanel.contains(e.target) && e.target !== $("btn-volume") && !$("btn-volume")?.contains(e.target)) {
-          volPanel.classList.remove("is-open");
+      if (volumePanel && volumePanel.classList.contains("is-open")) {
+        if (!volumePanel.contains(e.target)) {
+          volumePanel.classList.remove("is-open");
         }
       }
       if (sleepPanel && sleepPanel.classList.contains("is-open")) {
-        if (!sleepPanel.contains(e.target) && e.target !== $("btn-sleep") && !$("btn-sleep")?.contains(e.target)) {
+        if (!sleepPanel.contains(e.target)) {
           sleepPanel.classList.remove("is-open");
         }
       }

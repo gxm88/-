@@ -359,17 +359,19 @@
   font-weight: 600;
 }
 
-/* ---- 底部播放器（固定在底部） ---- */
+/* ---- 底部播放器（固定在底部）精简版 ---- */
 .player-bar {
   position: fixed;
   left: 0; right: 0; bottom: 0;
   display: grid;
-  grid-template-columns: 1.1fr 1.4fr 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  padding: 10px 18px;
+  gap: 12px;
+  padding: 8px 16px;
   background: var(--bg-1);
   border-top: 1px solid var(--border);
   z-index: 110;
+  height: 64px;
 }
 .player-track { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .player-cover {
@@ -780,6 +782,30 @@
 }
 .fs-tab-btn:hover { color: var(--text-1); }
 .fs-tab-btn.is-active { background: var(--bg-3); color: var(--accent); }
+
+/* 全屏内工具行（播放模式/均衡器/睡眠/音量） */
+.fs-utils {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 12px;
+}
+.fs-util-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.fs-util-btn:hover { color: var(--text-1); border-color: var(--text-3); }
+.fs-util-btn.is-active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 
 /* ---- 通用显隐工具（默认显示；移动端才隐藏） ---- */
 .hide-mobile { display: inline-flex; }
