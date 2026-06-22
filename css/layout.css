@@ -421,6 +421,11 @@
 .is-mobile-only { display: none; }
 .is-desktop-only { display: inline-flex; align-items: center; justify-content: center; }
 
+/* 播放器右侧按钮：桌面端隐藏移动端专属按钮 */
+.player-right #btn-prev-m,
+.player-right #btn-play-m,
+.player-right #btn-next-m { display: none; }
+
 .vol-bar {
   width: 90px; height: 4px; background: var(--bg-3); border-radius: 999px; cursor: pointer; position: relative;
 }
@@ -868,10 +873,6 @@
   .section-title { font-size: 16px; }
 
   /* === 播放器（胶囊形状：手机竖屏） === */
-  /* 桌面/移动端显示切换工具类（移动端覆盖） */
-  .is-mobile-only { display: inline-flex; align-items: center; justify-content: center; }
-  .is-desktop-only { display: none; }
-  
   .player-bar {
     display: flex;
     align-items: center;
@@ -879,34 +880,34 @@
     padding: 6px 12px 6px 6px;
     gap: 8px;
     position: fixed;
-    bottom: 72px;    /* 上方是播放器，下方是三 Tab */
+    bottom: 72px;
     left: 12px; right: 12px;
     height: 52px;
-    border-radius: 999px;     /* 两头半圆形胶囊 */
-    border-top: none;
+    border-radius: 999px;
     border: 1px solid var(--border);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
     background: var(--bg-1);
   }
-  .player-track { 
-    display: flex; 
-    align-items: center; 
-    gap: 10px; 
+  .player-track {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     min-width: 0;
     flex: 1;
   }
-  .player-track #btn-fav { display: none; }  /* 胶囊内不显示：收藏按钮移到右侧 */
   .player-cover {
     width: 40px; height: 40px;
-    border-radius: 50%;        /* 圆形专辑封面 */
+    border-radius: 50%;
     flex-shrink: 0;
   }
   .player-meta { min-width: 0; flex: 1; }
   .player-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .player-sub { display: none; }  /* 胶囊内隐藏副标题 */
-  /* 中间控制：小屏隐藏进度条区域 */
+  .player-sub { display: none; }
+  
+  /* 中间控制区隐藏 */
   .player-center { display: none; }
-  /* 右侧：一行图标按钮 */
+  
+  /* 右侧按钮：只显示5个移动端按钮 */
   .player-right {
     display: flex;
     gap: 2px;
@@ -914,6 +915,15 @@
     justify-content: flex-end;
     flex-shrink: 0;
   }
+  /* 显示移动端专属按钮 */
+  .player-right #btn-prev-m,
+  .player-right #btn-play-m,
+  .player-right #btn-next-m { display: inline-flex; }
+  /* 隐藏桌面端按钮 */
+  .player-right #btn-queue,
+  .player-right .vol-bar,
+  .player-right #btn-expand { display: none; }
+  
   .player-right .icon-btn {
     width: 32px; height: 32px;
     border-radius: 50%;
@@ -922,7 +932,6 @@
     width: 36px; height: 36px;
     background: var(--text-1);
     color: var(--bg-0);
-    border-radius: 50%;
   }
 
   /* === 底部三 Tab 导航（移动端专属） === */

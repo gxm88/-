@@ -596,19 +596,21 @@ const Player = (() => {
   }
 
   function renderControls() {
+    // 桌面端播放按钮
     const btn = $("btn-play");
-    if (!btn) return;
-    const iconPlay = btn.querySelector("#icon-play");
-    const iconPause = btn.querySelector("#icon-pause");
-    if (state.playing) {
-      if (iconPlay) iconPlay.style.display = "none";
-      if (iconPause) iconPause.style.display = "block";
-    } else {
-      if (iconPlay) iconPlay.style.display = "block";
-      if (iconPause) iconPause.style.display = "none";
+    if (btn) {
+      const iconPlay = btn.querySelector("#icon-play");
+      const iconPause = btn.querySelector("#icon-pause");
+      if (state.playing) {
+        if (iconPlay) iconPlay.style.display = "none";
+        if (iconPause) iconPause.style.display = "block";
+      } else {
+        if (iconPlay) iconPlay.style.display = "block";
+        if (iconPause) iconPause.style.display = "none";
+      }
     }
 
-    // 移动端按钮
+    // 移动端播放按钮
     const bpm = $("btn-play-m");
     if (bpm) {
       bpm.innerHTML = state.playing
@@ -636,7 +638,9 @@ const Player = (() => {
     if (fsCur) fsCur.textContent = fmtDur(Math.floor(sec * state.progress));
     if (fsDur) fsDur.textContent = fmtDur(sec);
 
-    renderVolume();
+    // 音量条
+    const volFill = $("vol-fill");
+    if (volFill) volFill.style.width = `${(state.muted ? 0 : state.volume) * 100}%`;
   }
 
   function tick() {
@@ -774,16 +778,16 @@ const Player = (() => {
 
   // ---- 绑定 ----
   function bindControls() {
-    // 播放/暂停
+    // 播放/暂停（桌面端中间按钮）
     const btn = $("btn-play");
     if (btn && !btn.dataset.bound) {
       btn.dataset.bound = "1";
       btn.addEventListener("click", togglePlay);
     }
-    // 下一首
+    // 下一首（桌面端）
     const bn = $("btn-next");
     if (bn && !bn.dataset.bound) { bn.dataset.bound = "1"; bn.addEventListener("click", next); }
-    // 上一首
+    // 上一首（桌面端）
     const bp = $("btn-prev");
     if (bp && !bp.dataset.bound) { bp.dataset.bound = "1"; bp.addEventListener("click", prev); }
 
@@ -807,7 +811,7 @@ const Player = (() => {
       bclear.addEventListener("click", clearQueue);
     }
 
-    // 全屏按钮
+    // 全屏按钮（桌面端）
     const bf = $("btn-expand");
     if (bf && !bf.dataset.bound) {
       bf.dataset.bound = "1";
@@ -827,7 +831,7 @@ const Player = (() => {
       bfav.addEventListener("click", toggleFavorite);
     }
 
-    // ---- 移动端按钮 ----
+    // ---- 移动端按钮（胶囊右侧） ----
     const bpm = $("btn-play-m");
     if (bpm && !bpm.dataset.bound) {
       bpm.dataset.bound = "1";
@@ -843,28 +847,15 @@ const Player = (() => {
       bnextM.dataset.bound = "1";
       bnextM.addEventListener("click", next);
     }
-    const bqm = $("btn-queue-m");
-    if (bqm && !bqm.dataset.bound) {
-      bqm.dataset.bound = "1";
-      bqm.addEventListener("click", () => {
-        const p = $("queue-panel");
-        if (p) p.classList.toggle("is-open");
-      });
-    }
-    const bfavm = $("btn-fav-m");
-    if (bfavm && !bfavm.dataset.bound) {
-      bfavm.dataset.bound = "1";
-      bfavm.addEventListener("click", toggleFavorite);
-    }
 
-    // ---- 封面/元数据点击 -> 全屏（使用事件委托，更可靠） ----
+    // ---- 封面/元数据点击 -> 全屏 ----
     const playerTrack = $("player-track-area");
     if (playerTrack && !playerTrack.dataset.bound) {
       playerTrack.dataset.bound = "1";
       playerTrack.addEventListener("click", (e) => {
-        // 排除收藏按钮点击
+        // 排除按钮点击
         const target = e.target.closest("button");
-        if (target && (target.id === "btn-fav" || target.id === "btn-fav-m")) return;
+        if (target) return;
         toggleFullscreen();
       });
     }
