@@ -9,6 +9,8 @@ const playlistsRoutes = require('./routes/playlists');
 const adminRoutes = require('./routes/admin');
 const scannerRoutes = require('./routes/scanner');
 const aiRoutes = require('./routes/ai');
+const userRoutes = require('./routes/user');
+const libraryRoutes = require('./routes/library');
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use('/api/playlists', playlistsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/scanner', scannerRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api', userRoutes);
+app.use('/api', libraryRoutes);
 
 app.use(express.static(path.resolve(__dirname, '..')));
 

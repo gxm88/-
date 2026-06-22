@@ -118,9 +118,9 @@ function seedData() {
   const insertUser = db.prepare(
     'INSERT INTO users (username, password_hash, role, email, avatar) VALUES (?, ?, ?, ?, ?)'
   );
-  insertUser.run('admin', bcrypt.hashSync('admin123', salt), 'admin', 'admin@musebox.com', null);
-  insertUser.run('user', bcrypt.hashSync('user123', salt), 'user', 'user@musebox.com', null);
-  insertUser.run('guest', bcrypt.hashSync('guest123', salt), 'guest', 'guest@musebox.com', null);
+  insertUser.run('admin', bcrypt.hashSync('admin', salt), 'admin', 'admin@musebox.com', null);
+  insertUser.run('user', bcrypt.hashSync('user', salt), 'user', 'user@musebox.com', null);
+  insertUser.run('guest', bcrypt.hashSync('guest', salt), 'guest', 'guest@musebox.com', null);
 
   const insertTrack = db.prepare(
     'INSERT INTO tracks (title, artist, album, genre, duration, play_count, cover_path, lyrics, path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'

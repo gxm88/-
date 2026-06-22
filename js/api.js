@@ -16,7 +16,7 @@ const API = (() => {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
-      const res = await fetch(path, {
+      const res = await fetch(BASE + path, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
@@ -85,35 +85,33 @@ const API = (() => {
         }
 
         // ---- 认证 ----
-        if (path === "/auth/login" && method === "POST") {
-          const { username, password, role } = body || {};
-          // Mock 登录：任何用户名/密码都能登录，根据 username 判断角色
-          const isAdmin = username === "admin" || role === "admin";
+        if (path === "/login" && method === "POST") {
+          const { username, password } = body || {};
+          const isAdmin = username === "admin";
           const mockToken = "mock-token-" + Date.now();
           return resolve({
             ok: true,
             token: mockToken,
             user: {
               id: isAdmin ? 1 : 2,
-              username: username || (isAdmin ? "admin" : "user"),
+              username: username || "user",
               name: isAdmin ? "管理员" : "普通用户",
               role: isAdmin ? "admin" : "user",
-              avatar: (username || isAdmin ? "A" : "U").charAt(0).toUpperCase()
+              avatar: (username || "U").charAt(0).toUpperCase()
             }
           });
         }
-        if (path === "/auth/logout" && method === "POST") return resolve({ ok: true });
-        if (path === "/auth/me") {
-          return resolve({ ok: true, user: { name: "普通用户", role: "user" } });
+        if (path === "/logout" && method === "POST") return resolve({ ok: true });
+        if (path === "/profile") {
+          return resolve({ data: USER_PROFILE });
         }
 
         // ---- 用户 ----
-        if (path === "/user/profile") return resolve({ data: USER_PROFILE });
-        if (path === "/user/favorites") return resolve({ data: pickN(TRACKS, 10, 4) });
-        if (path === "/user/history") return resolve({ data: pickN(TRACKS, 12, 2) });
-        if (path.startsWith("/user/favorites/") && method === "POST") return resolve({ ok: true });
-        if (path.startsWith("/user/favorites/") && method === "DELETE") return resolve({ ok: true });
-        if (path.startsWith("/user/history/") && method === "POST") return resolve({ ok: true });
+        if (path === "/favorites") return resolve({ data: pickN(TRACKS, 10, 4) });
+        if (path === "/history") return resolve({ data: pickN(TRACKS, 12, 2) });
+        if (path.startsWith("/favorites/") && method === "POST") return resolve({ ok: true });
+        if (path.startsWith("/favorites/") && method === "DELETE") return resolve({ ok: true });
+        if (path.startsWith("/history/") && method === "POST") return resolve({ ok: true });
 
         // ---- AI ----
         if (path === "/ai/daily") return resolve({ data: pickN(TRACKS, 12, new Date().getDate() % 7) });
@@ -199,17 +197,17 @@ const API = (() => {
     getLocalCharts: () => request("GET", "/charts/local").catch(() => mock("GET", "/charts/local")),
 
     // 认证
-    login: (credentials) => request("POST", "/auth/login", credentials).catch(() => mock("POST", "/auth/login", credentials)),
-    logout: () => request("POST", "/auth/logout").catch(() => ({ ok: true })),
-    getMe: () => request("GET", "/auth/me").catch(() => mock("GET", "/auth/me")),
+    login: (credentials) => request("POST", "/login", credentials).catch(() => mock("POST", "/login", credentials)),
+    logout: () => request("POST", "/logout").catch(() => ({ ok: true })),
+    getMe: () => request("GET", "/profile").catch(() => mock("GET", "/profile")),
 
     // 用户
-    getProfile: () => request("GET", "/user/profile").catch(() => mock("GET", "/user/profile")),
-    getFavorites: () => request("GET", "/user/favorites").catch(() => mock("GET", "/user/favorites")),
-    getHistory: () => request("GET", "/user/history").catch(() => mock("GET", "/user/history")),
-    addFavorite: (trackId) => request("POST", `/user/favorites/${trackId}`).catch(() => ({ ok: true })),
-    removeFavorite: (trackId) => request("DELETE", `/user/favorites/${trackId}`).catch(() => ({ ok: true })),
-    addHistory: (trackId) => request("POST", `/user/history/${trackId}`).catch(() => ({ ok: true })),
+    getProfile: () => request("GET", "/profile").catch(() => mock("GET", "/profile")),
+    getFavorites: () => request("GET", "/favorites").catch(() => mock("GET", "/favorites")),
+    getHistory: () => request("GET", "/history").catch(() => mock("GET", "/history")),
+    addFavorite: (trackId) => request("POST", `/favorites/${trackId}`).catch(() => ({ ok: true })),
+    removeFavorite: (trackId) => request("DELETE", `/favorites/${trackId}`).catch(() => ({ ok: true })),
+    addHistory: (trackId) => request("POST", `/history/${trackId}`).catch(() => ({ ok: true })),
 
     // AI
     getDailyRecommend: () => request("GET", "/ai/daily").catch(() => mock("GET", "/ai/daily")),

@@ -269,4 +269,41 @@ router.post('/backup/restore', (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /admin/scan
+router.post('/scan', (req, res) => {
+  res.json({ ok: true, message: "扫描已触发" });
+});
+
+// PUT /admin/ai-config
+router.put('/ai-config', (req, res) => {
+  try {
+    const updates = req.body;
+    const stmt = db.prepare(
+      "INSERT OR REPLACE INTO ai_configs (id, provider, model_name, api_key, enabled, calls_today, description) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+    const updateMany = db.transaction(() => {
+      for (const config of Array.isArray(updates) ? updates : [updates]) {
+        stmt.run(
+          config.id || null,
+          config.provider || null,
+          config.model_name || null,
+          config.api_key || null,
+          config.enabled !== undefined ? config.enabled : 1,
+          config.calls_today || 0,
+          config.description || null
+        );
+      }
+    });
+    updateMany();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/network
+router.get('/network', (req, res) => {
+  res.json({ data: { tcp_connections: 7, status: "正常" } });
+});
+
 module.exports = router;
