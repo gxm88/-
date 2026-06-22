@@ -102,7 +102,7 @@ const Pages = (() => {
               <div class="banner-sub">${b.sub}</div>
               <button class="banner-cta" data-go-playlist="p0${i}">▶ 立即播放</button>
             </div>`).join("")}
-          <div class="banner-dots" style="position:absolute;right:32px;bottom:24px">
+          <div class="banner-dots">
             ${BANNERS.map((_, i) => `<span class="banner-dot ${i === 0 ? "is-active" : ""}" data-banner-idx="${i}"></span>`).join("")}
           </div>
         </div>
@@ -110,58 +110,36 @@ const Pages = (() => {
 
       <section class="page-section">
         <div class="section-head">
-          <h3 class="section-title">今日 AI 推荐歌单</h3>
-          <button class="section-more" data-goto="ai">查看全部 AI 功能 →</button>
+          <h3 class="section-title">为你推荐的歌单</h3>
+          <button class="section-more" data-goto="discover">浏览更多 →</button>
         </div>
-        <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
-          ${pickN(PLAYLISTS.filter(p => p.type === "ai" || p.type === "official"), 4, 0).map(playlistCard).join("")}
-        </div>
-      </section>
-
-      <section class="page-section">
-        <div class="section-head">
-          <h3 class="section-title">最近播放</h3>
-          <span class="section-more">${TRACKS.slice(0, 6).length} 首 · 已同步到 APP</span>
-        </div>
-        <div class="track-list">
-          ${pickN(TRACKS, 6, 2).map((t, i) => rowFor(t, i)).join("")}
+        <div class="card-grid">
+          ${PLAYLISTS.slice(0, 4).map(playlistCard).join("")}
         </div>
       </section>
 
       <section class="page-section">
         <div class="section-head">
-          <h3 class="section-title">新上架歌曲</h3>
-          <button class="section-more" data-goto="library">查看曲库 →</button>
+          <h3 class="section-title">最近播放的歌曲</h3>
+          <button class="section-more" data-goto="library">查看全部 ${TRACKS.length} 首 →</button>
         </div>
         <div class="track-list">
-          ${pickN(TRACKS, 6, 5).map((t, i) => rowFor(t, i)).join("")}
+          ${pickN(TRACKS, 8, 0).map((t, i) => rowFor(t, i)).join("")}
         </div>
       </section>
 
       <section class="page-section">
-        <div class="section-head">
-          <h3 class="section-title">全网热榜预览</h3>
-          <button class="section-more" data-goto="charts">完整榜单 →</button>
-        </div>
-        <div class="track-list">
-          ${CHARTS.slice(0, 5).map(chartRow).join("")}
-        </div>
-      </section>
-
-      <section class="page-section">
-        <div class="ai-card">
+        <div class="ai-card compact">
           <div>
-            <div class="ph-type" style="color:var(--accent)">AI · 智能推荐中心</div>
+            <span class="tag-accent">AI</span>
             <h3 class="ai-card-title" style="margin-top:8px">让 AI 为你做一张歌单</h3>
-            <p class="ai-card-sub">描述你想听的场景、情绪或用途，AI 会从你的本地曲库中匹配最合适的歌曲。</p>
+            <p class="ai-card-sub">描述场景、情绪或用途，AI 在你的本地曲库中精准匹配。</p>
             <div class="ai-card-tags">
               <span class="ai-card-tag">#深夜独酌</span>
               <span class="ai-card-tag">#雨天专注</span>
-              <span class="ai-card-tag">#清晨咖啡</span>
               <span class="ai-card-tag">#通勤低干扰</span>
-              <span class="ai-card-tag">#周末微醺摇滚</span>
             </div>
-            <div style="margin-top:22px">
+            <div style="margin-top:18px">
               <button class="ai-card-cta" data-goto="ai">进入 AI 推荐中心 →</button>
             </div>
           </div>
