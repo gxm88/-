@@ -414,6 +414,11 @@
 }
 
 .player-right { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+
+/* === 桌面/移动端显示切换（默认：桌面） === */
+.is-mobile-only { display: none; }
+.is-desktop-only { display: inline-flex; align-items: center; justify-content: center; }
+
 .vol-bar {
   width: 90px; height: 4px; background: var(--bg-3); border-radius: 999px; cursor: pointer; position: relative;
 }
@@ -630,49 +635,52 @@
   .page-title { font-size: 22px; }
   .section-title { font-size: 16px; }
 
-  /* === 播放器（重点修复） === */
+  /* === 播放器（胶囊形状：手机竖屏） === */
+  /* 桌面/移动端显示切换工具类（移动端覆盖） */
+  .is-mobile-only { display: inline-flex; align-items: center; justify-content: center; }
+  .is-desktop-only { display: none; }
+  
   .player-bar {
-    grid-template-columns: 1fr auto;
-    padding: 10px 14px;
+    grid-template-columns: auto 1fr auto;
+    padding: 8px 10px 8px 8px;
     gap: 10px;
     align-items: center;
     position: fixed;
-    bottom: 64px;    /* 上方是播放器，下方是三 Tab */
-    left: 0; right: 0;
+    bottom: 72px;    /* 上方是播放器，下方是三 Tab */
+    left: 12px; right: 12px;
     height: auto;
+    border-radius: 999px;     /* 两头半圆形胶囊 */
+    border-top: none;
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    background: var(--bg-1);
   }
-  .player-track { min-width: 0; }
-  .player-cover { width: 42px; height: 42px; }
+  .player-track { min-width: 0; gap: 10px; }
+  .player-track #btn-fav { display: none; }  /* 胶囊内不显示：收藏按钮移到右侧 */
+  .player-cover {
+    width: 46px; height: 46px;
+    border-radius: 50%;        /* 圆形专辑封面 */
+  }
   .player-title { font-size: 13px; }
   .player-sub { font-size: 11px; }
-  /* 中间控制：仅保留 play/prev/next，隐藏其余；进度条改为 100% 占满整个下一行 */
-  .player-center {
-    grid-column: 1 / -1;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    width: 100%;
-  }
-  .player-controls {
-    justify-content: center;
+  /* 中间控制：小屏隐藏中间播放控制区，只保留右侧一行 */
+  .player-center { display: none; }
+  /* 右侧：小屏显示为一行图标，胶囊右侧 */
+  .player-right {
+    display: flex;
     gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
   }
-  .player-controls .icon-btn:first-child,
-  .player-controls .icon-btn:last-child {
-    display: none;  /* 隐藏 shuffle / queue */
+  .player-right .icon-btn {
+    width: 32px; height: 32px;
   }
-  .player-progress {
-    width: 100%;
-    gap: 8px;
+  .player-right #btn-play-m {
+    width: 36px; height: 36px;
+    background: var(--text-1);
+    color: var(--bg-0);
+    border-radius: 50%;
   }
-  .player-progress .t {
-    font-size: 10px;
-    color: var(--text-3);
-    min-width: 30px;
-    text-align: center;
-  }
-  /* 右侧音量等：小屏隐藏 */
-  .player-right { display: none; }
 
   /* === 底部三 Tab 导航（移动端专属） === */
   .mobile-bottom-nav {

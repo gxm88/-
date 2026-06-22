@@ -260,6 +260,40 @@ const Player = (() => {
       });
     }
 
+    // ---- 移动端按钮 ----
+    // 移动端播放按钮
+    const bpm = $("btn-play-m");
+    if (bpm && !bpm.dataset.bound) {
+      bpm.dataset.bound = "1";
+      bpm.addEventListener("click", togglePlay);
+    }
+    // 移动端队列按钮
+    const bqm = $("btn-queue-m");
+    if (bqm && !bqm.dataset.bound) {
+      bqm.dataset.bound = "1";
+      bqm.addEventListener("click", () => {
+        const p = $("queue-panel");
+        if (p) p.classList.toggle("is-open");
+      });
+    }
+    // 移动端收藏按钮
+    const bfavm = $("btn-fav-m");
+    if (bfavm && !bfavm.dataset.bound) {
+      bfavm.dataset.bound = "1";
+      bfavm.addEventListener("click", () => {
+        const t = state.queue[state.index];
+        if (!t) return;
+        if (state.favorite.has(t.id)) {
+          state.favorite.delete(t.id);
+          bfavm.style.color = "";
+          bfavm.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11-1 .6-3 .6-4 0z"></path></svg>';
+        } else {
+          state.favorite.add(t.id);
+          bfavm.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#f87171" stroke="#f87171" stroke-width="2"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11-1 .6-3 .6-4 0z"></path></svg>';
+        }
+      });
+    }
+
     const bar = $("progress-bar");
     if (bar && !bar.dataset.bound) {
       bar.dataset.bound = "1";
