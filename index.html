@@ -249,7 +249,7 @@
       </div>
 
       <div class="player-right">
-        <button class="icon-btn" id="btn-eq" title="均衡器">
+        <button class="icon-btn" id="btn-eq" title="均衡器" onclick="Player.toggleEQPanel()">
           ⟐
         </button>
         <button class="icon-btn" id="btn-volume" title="音量">
@@ -269,9 +269,10 @@
         </div>
         <div class="queue-list" id="queue-list"></div>
       </div>
-    <!-- EQ 均衡器面板 -->
-      <div class="eq-panel" id="eq-panel"></div>
     </footer>
+
+    <!-- EQ 均衡器面板 (独立于 player-bar 之外) -->
+    <div class="eq-panel" id="eq-panel"></div>
 
     <!-- 全屏歌词/播放器 -->
     <div class="fullscreen-player" id="fullscreen-player">

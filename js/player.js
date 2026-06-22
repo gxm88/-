@@ -254,7 +254,10 @@ const Player = (() => {
     const bEq = $("btn-eq");
     if (bEq && !bEq.dataset.bound) {
       bEq.dataset.bound = "1";
-      bEq.addEventListener("click", toggleEQPanel);
+      bEq.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleEQPanel();
+      });
     }
 
     const bar = $("progress-bar");
@@ -394,7 +397,7 @@ const Player = (() => {
 
   function toggleEQPanel() {
     const panel = $("eq-panel");
-    if (!panel) return;
+    if (!panel) { console.warn("[Player] eq-panel 未找到"); return; }
     panel.classList.toggle("is-open");
     if (panel.classList.contains("is-open")) {
       renderEQPanel();

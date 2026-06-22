@@ -452,7 +452,7 @@
 
 /* EQ 均衡器面板 */
 .eq-panel {
-  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(8px);
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(8px);
   width: 520px; max-width: calc(100vw - 32px);
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -460,7 +460,7 @@
   padding: 22px 24px 18px;
   opacity: 0; pointer-events: none;
   transition: all var(--t-fast);
-  z-index: 200;
+  z-index: 999;
   box-shadow: 0 16px 48px rgba(0,0,0,.5);
 }
 .eq-panel.is-open { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
