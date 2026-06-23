@@ -507,19 +507,78 @@ window.Player = window.Player || {};
         window.Player.seekTo(p);
       });
 
-      // 拖拽跳转
+      // 拖拽跳转（rAF 节流 + 缓存 rect）
       let dragging = false;
-      const updateProgress = (clientX) => {
-        const rect = bar.getBoundingClientRect();
-        const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        window.Player.seekTo(p);
+      let rafId = null;
+      let cachedRect = null;
+      let lastPct = 0;
+
+      const updateProgressUI = (pct) => {
+        const fill = document.getElementById("progress-fill");
+        const curEl = document.getElementById("t-cur");
+        const state = window.Player.state;
+        const t = state.queue[state.index];
+        const sec = t ? t.dur : 0;
+
+        if (fill) fill.style.width = `${(pct * 100).toFixed(2)}%`;
+        if (curEl && sec > 0) curEl.textContent = window.Player.fmtTime(Math.floor(sec * pct));
       };
-      bar.addEventListener("mousedown", (e) => { e.preventDefault(); dragging = true; updateProgress(e.clientX); });
-      document.addEventListener("mousemove", (e) => { if (dragging) { e.preventDefault(); updateProgress(e.clientX); } });
-      document.addEventListener("mouseup", () => { dragging = false; });
-      bar.addEventListener("touchstart", (e) => { e.preventDefault(); dragging = true; updateProgress(e.touches[0].clientX); }, { passive: false });
-      document.addEventListener("touchmove", (e) => { if (dragging) { e.preventDefault(); updateProgress(e.touches[0].clientX); } }, { passive: false });
-      document.addEventListener("touchend", () => { dragging = false; });
+
+      const updateProgress = (clientX) => {
+        if (!cachedRect) cachedRect = bar.getBoundingClientRect();
+        const p = Math.max(0, Math.min(1, (clientX - cachedRect.left) / cachedRect.width));
+        lastPct = p;
+
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          updateProgressUI(lastPct);
+        });
+      };
+
+      bar.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        dragging = true;
+        cachedRect = bar.getBoundingClientRect();
+        updateProgress(e.clientX);
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (!dragging) return;
+        e.preventDefault();
+        updateProgress(e.clientX);
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (dragging) {
+          dragging = false;
+          cachedRect = null;
+          if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+          window.Player.seekTo(lastPct);
+        }
+      });
+
+      bar.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        dragging = true;
+        cachedRect = bar.getBoundingClientRect();
+        updateProgress(e.touches[0].clientX);
+      }, { passive: false });
+
+      document.addEventListener("touchmove", (e) => {
+        if (!dragging) return;
+        e.preventDefault();
+        updateProgress(e.touches[0].clientX);
+      }, { passive: false });
+
+      document.addEventListener("touchend", () => {
+        if (dragging) {
+          dragging = false;
+          cachedRect = null;
+          if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+          window.Player.seekTo(lastPct);
+        }
+      });
     }
 
     // 音量条拖拽
