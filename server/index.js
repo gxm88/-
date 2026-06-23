@@ -13,6 +13,7 @@ const scannerRoutes = require('./routes/scanner');
 const aiRoutes = require('./routes/ai');
 const userRoutes = require('./routes/user');
 const libraryRoutes = require('./routes/library');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/api/scanner', scannerRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api', userRoutes);
 app.use('/api', libraryRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Upload route
 app.post('/api/tracks/upload', upload.array('files', 20), (req, res) => {

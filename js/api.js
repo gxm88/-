@@ -162,6 +162,17 @@ const API = (() => {
         if (path === "/folders") return resolve({ data: FOLDERS, total: FOLDERS.length });
         if (path.startsWith("/folders/")) return resolve({ data: pickN(TRACKS, 10, 0) });
 
+        // ---- AI 模型 ----
+        if (path === "/ai/models") {
+          return resolve({ data: [], total: 0 });
+        }
+        if (path.startsWith("/ai/models")) {
+          if (method === "GET") return resolve({ data: [], total: 0 });
+          if (method === "POST") return resolve({ data: { id: "1", provider: body?.provider || "New", name: body?.model_name || "model", api_key: null, enabled: true, calls: 0, description: body?.description || "" } });
+          if (method === "PUT") return resolve({ data: { id: path.split("/").pop(), provider: "Updated", name: "model", api_key: null, enabled: true, calls: 0, description: "" } });
+          if (method === "DELETE") return resolve({ ok: true });
+        }
+
         return resolve({ error: "unknown mock path" });
       }, delay);
     });
@@ -227,6 +238,12 @@ const API = (() => {
     getAdminLogs: () => request("GET", "/admin/logs").catch(() => mock("GET", "/admin/logs")),
     updateAIConfig: (config) => request("PUT", "/admin/ai-config", config).catch(() => mock("PUT", "/admin/ai-config", config)),
     getNetworkStatus: () => request("GET", "/admin/network").catch(() => mock("GET", "/admin/network")),
+
+    // ---- AI 模型管理 ----
+    getAIModels: () => get("/ai/models"),
+    createAIModel: (data) => post("/ai/models", data),
+    updateAIModel: (id, data) => put(`/ai/models/${id}`, data),
+    deleteAIModel: (id) => del(`/ai/models/${id}`),
 
     // 歌手 / 专辑 / 文件夹
     getArtists: () => request("GET", "/artists").catch(() => mock("GET", "/artists")),

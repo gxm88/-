@@ -8,11 +8,23 @@ const router = express.Router();
 router.use(auth);
 router.use(admin);
 
+function mapModel(m) {
+  return {
+    id: String(m.id),
+    provider: m.provider,
+    name: m.model_name,
+    api_key: m.api_key ? m.api_key.substring(0, 6) + '...' : null,
+    enabled: !!m.enabled,
+    calls: m.calls_today || 0,
+    description: m.description || '',
+  };
+}
+
 // GET /ai/models
 router.get('/models', (req, res) => {
   try {
     const models = db.prepare('SELECT * FROM ai_configs').all();
-    res.json({ data: models, total: models.length });
+    res.json({ data: models.map(mapModel), total: models.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -31,7 +43,7 @@ router.post('/models', (req, res) => {
     ).run(provider, model_name, api_key || null, enabled !== undefined ? (enabled ? 1 : 0) : 1, description || null);
 
     const model = db.prepare('SELECT * FROM ai_configs WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(model);
+    res.status(201).json({ data: mapModel(model) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -65,7 +77,7 @@ router.put('/models/:id', (req, res) => {
     }
 
     const updated = db.prepare('SELECT * FROM ai_configs WHERE id = ?').get(id);
-    res.json(updated);
+    res.json({ data: mapModel(updated) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
