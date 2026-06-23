@@ -79,19 +79,32 @@ window.Pages = window.Pages || {};
 
       zone.addEventListener('click', () => input.click());
 
-      zone.addEventListener('dragover', (e) => {
+      zone.addEventListener('dragenter', (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
         zone.style.borderColor = 'var(--accent)';
         zone.style.background = 'var(--accent-soft)';
       });
 
-      zone.addEventListener('dragleave', () => {
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+        zone.style.borderColor = 'var(--accent)';
+        zone.style.background = 'var(--accent-soft)';
+      });
+
+      zone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         zone.style.borderColor = 'var(--border)';
         zone.style.background = 'var(--bg-3)';
       });
 
       zone.addEventListener('drop', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         zone.style.borderColor = 'var(--border)';
         zone.style.background = 'var(--bg-3)';
         handleFiles(e.dataTransfer.files);
