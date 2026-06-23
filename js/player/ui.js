@@ -457,11 +457,17 @@ window.Player = window.Player || {};
       document.addEventListener("touchend", () => { dragging = false; });
     }
 
-    // 全局点击关闭面板
+    // 全局点击关闭面板（全屏播放器内的按钮不触发关闭）
     document.addEventListener("click", (e) => {
       const eqPanel = document.getElementById("eq-panel");
       const volumePanel = document.getElementById("volume-panel");
       const sleepPanel = document.getElementById("sleep-panel");
+      const fsPlayer = document.getElementById("fullscreen-player");
+
+      // 如果点击来自全屏播放器内的工具栏按钮，不关闭面板
+      if (fsPlayer && fsPlayer.classList.contains("is-open") && fsPlayer.contains(e.target)) {
+        return;
+      }
 
       if (eqPanel && eqPanel.classList.contains("is-open")) {
         if (!eqPanel.contains(e.target)) {

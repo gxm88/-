@@ -298,7 +298,8 @@
   font-size: var(--fs-13);
   color: var(--text-2);
   border-radius: var(--r-8);
-  transition: background var(--t-fast), color var(--t-fast);
+  border: 1px solid transparent;
+  transition: background var(--t-fast), color var(--t-fast), border var(--t-fast);
   text-align: left;
 }
 .side-item:hover { background: var(--bg-2); color: var(--text-1); }
