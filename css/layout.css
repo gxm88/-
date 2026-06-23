@@ -918,8 +918,7 @@
   .player-right #btn-play-m,
   .player-right #btn-next-m { display: inline-flex; }
   /* 隐藏桌面端按钮 */
-  .player-right .vol-bar,
-  .player-right #btn-expand { display: none; }
+  .player-right .vol-bar { display: none; }
   /* 队列按钮在移动端也显示 */
   .player-right #btn-queue { display: inline-flex; }
   
@@ -998,6 +997,11 @@
   .lyric-line.is-current { font-size: 16px; }
   .fs-close { top: 14px; right: 14px; font-size: 28px; }
   .fs-progress-wrap { max-width: 100%; }
+  .fs-utils { gap: 6px; flex-wrap: wrap; }
+  .fs-util-btn { padding: 6px 10px; font-size: 11px; }
+  .fs-controls { gap: 12px; }
+  .fs-ctrl-btn { width: 40px; height: 40px; }
+  .fs-play-btn { width: 48px; height: 48px; }
 
   /* === 面板（移动端） === */
   .volume-panel, .sleep-panel {

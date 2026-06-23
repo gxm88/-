@@ -94,7 +94,21 @@ window.App = window.App || {};
 
     // 导航激活（侧栏）—— 立即执行
     document.querySelectorAll(".side-item").forEach(el => el.classList.remove("is-active"));
-    const navBtn = document.querySelector(`.side-item[data-goto="${route}"]`);
+    let navBtn = document.querySelector(`.side-item[data-goto="${route}"]`);
+    if (!navBtn) {
+      // 子路由映射到父级侧栏项
+      const SIDEBAR_FALLBACK = {
+        "playlist-detail": "discover",
+        "album-detail": "albums",
+        "favorites": "profile",
+        "history": "profile",
+        "ai-daily": "ai",
+        "ai-nlp": "ai",
+        "playlist-ai": "ai",
+      };
+      const fb = SIDEBAR_FALLBACK[route];
+      if (fb) navBtn = document.querySelector(`.side-item[data-goto="${fb}"]`);
+    }
     if (navBtn) navBtn.classList.add("is-active");
 
     // 移动端底部三 Tab 激活映射 —— 立即执行
@@ -223,6 +237,11 @@ window.App = window.App || {};
     // 滚动到顶部
     container.scrollTop = 0;
     window.scrollTo(0, 0);
+
+    // 重新绑定播放器控件（确保路由切换后事件不丢失）
+    if (window.Player && window.Player.bindControls) {
+      window.Player.bindControls();
+    }
   }
 
   /** 绑定管理员侧边栏切换 */
