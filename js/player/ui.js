@@ -170,6 +170,13 @@ window.Player = window.Player || {};
     panel.classList.toggle("is-open");
     if (panel.classList.contains("is-open")) {
       window.Player.renderQueue();
+      // 如果全屏播放器打开，提升队列面板 z-index
+      const fs = document.getElementById("fullscreen-player");
+      if (fs && fs.classList.contains("is-open")) {
+        panel.style.zIndex = "1100";
+      } else {
+        panel.style.zIndex = "";
+      }
     }
   }
 
@@ -472,7 +479,11 @@ window.Player = window.Player || {};
       const fsPlayer = document.getElementById("fullscreen-player");
 
       // 如果点击来自全屏播放器内的工具栏按钮，不关闭面板
+      const queuePanel = document.getElementById("queue-panel");
       if (fsPlayer && fsPlayer.classList.contains("is-open") && fsPlayer.contains(e.target)) {
+        return;
+      }
+      if (queuePanel && queuePanel.classList.contains("is-open") && queuePanel.contains(e.target)) {
         return;
       }
 

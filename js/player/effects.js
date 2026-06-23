@@ -86,6 +86,7 @@ window.Player = window.Player || {};
     panel.querySelectorAll(".eq-band-slider").forEach(slider => {
       let dragging = false;
       const idx = parseInt(slider.dataset.idx);
+      let rafId = null;
 
       const updateGain = (clientY) => {
         const track = slider.querySelector(".eq-band-track");
@@ -94,7 +95,29 @@ window.Player = window.Player || {};
         const pct = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
         state.eq.bands[idx].gain = Math.round((pct * 24 - 12) * 10) / 10;
         state.eq.preset = "custom";
-        renderEQPanel();
+
+        if (rafId) return; // throttle with rAF
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          // Update slider fill height
+          const fill = slider.querySelector(".eq-band-fill");
+          if (fill) fill.style.height = `${(pct * 100).toFixed(0)}%`;
+          // Update slider thumb position
+          const thumb = slider.querySelector(".eq-band-thumb");
+          if (thumb) thumb.style.bottom = `${(pct * 100).toFixed(0)}%`;
+          // Update dB label
+          const gainLabel = slider.parentElement.querySelector(".eq-band-gain");
+          if (gainLabel) {
+            const g = state.eq.bands[idx].gain;
+            gainLabel.textContent = `${g > 0 ? "+" : ""}${g} dB`;
+          }
+          // Update preset buttons active state
+          const presetBtns = panel.querySelectorAll(".eq-preset-btn");
+          presetBtns.forEach(btn => btn.classList.toggle("is-active", btn.dataset.preset === "custom"));
+          // Update preset name in header
+          const presetName = panel.querySelector(".eq-preset-name");
+          if (presetName) presetName.textContent = "自定义";
+        });
       };
 
       slider.addEventListener("mousedown", (e) => { dragging = true; updateGain(e.clientY); });

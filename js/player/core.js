@@ -142,6 +142,7 @@ window.Player = window.Player || {};
     state.playMode = PLAY_MODES[(idx + 1) % PLAY_MODES.length].key;
     state.shuffleHistory = [];
     window.Player.renderPlayModeButton();
+    window.Player.renderFullscreen();
   }
 
   function setPlayMode(mode) {
