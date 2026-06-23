@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  musebox:
+    build: .
+    container_name: musebox
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./server/data:/app/server/data
+      - ./music:/app/music:ro
+    environment:
+      - PORT=3001
+      - JWT_SECRET=change-this-to-a-random-string
+      - DB_PATH=./data/musebox.db
+      - MUSIC_DIR=./music
+    restart: unless-stopped

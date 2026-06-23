@@ -1,0 +1,30 @@
+# Checklist
+
+- [x] `layout.css` 桌面端媒体查询中 `player-bar` 的无效 `grid-template-columns` 已移除
+- [x] `player-bar` 高度与 `--player-h` 变量一致（或删除未使用的变量）
+- [x] `pages.js` 中 `home()` 页面通过 `API.getTracks()` 等获取数据，不再直接使用 `TRACKS`
+- [x] `pages.js` 中 `discover()` 页面通过 `API.getPlaylists()` 等获取数据，不再直接使用 `PLAYLISTS`
+- [x] `pages.js` 中 `charts()` 页面通过 `API.getCharts()` 获取数据，不再直接使用 `CHARTS`
+- [x] `pages.js` 中 `library()` 页面通过 `API.getTracks()` 获取数据，不再直接使用 `TRACKS`
+- [x] `pages.js` 中 `artists()`、`albums()`、`folders()` 通过相应 API 方法获取数据
+- [x] `pages.js` 中 `profile()` 页面通过 `API.getProfile()` 等获取数据，不再直接使用 `USER_PROFILE`
+- [x] `pages.js` 中 `playlistDetail()` 通过 `API.getPlaylist(id)` 获取数据
+- [x] `pages.js` 中 `albumDetail()` 通过 `API.getAlbum(id)` 获取数据
+- [x] `pages.js` 中 `searchResults()` 通过 `API.search(q)` 获取数据
+- [x] `pages.js` 中 AI 相关页面通过 `API.getDailyRecommend()` 等获取数据
+- [x] `pages.js` 中 `admin()` 页面通过 `API.getAdminStats()` 等获取数据
+- [x] `player.js` `togglePlay()` 通过 `API.getTracks()` 获取默认歌曲列表，不再直接使用 `TRACKS`
+- [x] `app.js` `bindCards()` 中歌手/文件夹/歌单播放入口通过 API 获取数据
+- [x] `app.js` NLP 生成通过 `API.generateNLP()` 获取数据
+- [x] 页面数据加载时显示骨架屏
+- [x] 数据加载失败时显示错误提示和重试按钮
+- [x] 全屏播放器播放次数从 `API.getTrack(id)` 获取
+- [x] 全屏播放器 AI 匹配度从 `API.getSimilar()` 计算
+- [x] 全屏播放器歌词从 track 数据获取
+- [x] `toggleFavorite()` 调用 API 持久化收藏状态
+- [x] 页面加载时恢复收藏状态
+- [x] 搜索无结果时显示空状态提示
+- [x] 歌单/专辑无歌曲时显示空状态提示
+- [x] 所有路由页面渲染正常
+- [x] API 降级后页面仍正常显示
+- [x] 语法检查通过（`node -c` 对所有 JS 文件）
