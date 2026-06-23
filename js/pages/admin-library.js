@@ -10,9 +10,9 @@ window.Pages = window.Pages || {};
         <h3>手动上传音乐</h3>
         <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">支持 MP3 / WAV / FLAC / OGG / AAC / M4A 格式，单文件最大 200MB</p>
         <div class="upload-zone" id="upload-zone" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all var(--t-fast);background:var(--bg-3)">
-          <div style="font-size:32px;margin-bottom:8px;color:var(--text-dim)">📁</div>
-          <div style="font-size:14px;color:var(--text-2);margin-bottom:4px">拖拽音频文件到此处</div>
-          <div style="font-size:12px;color:var(--text-3)">或点击选择文件</div>
+          <div style="font-size:32px;margin-bottom:8px;color:var(--text-dim);pointer-events:none">📁</div>
+          <div style="font-size:14px;color:var(--text-2);margin-bottom:4px;pointer-events:none">拖拽音频文件到此处</div>
+          <div style="font-size:12px;color:var(--text-3);pointer-events:none">或点击选择文件</div>
           <input type="file" id="upload-input" accept=".mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus" multiple style="display:none" />
         </div>
         <div id="upload-list" style="margin-top:12px;display:none">
