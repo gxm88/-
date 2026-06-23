@@ -100,8 +100,8 @@ window.Player = window.Player || {};
       slider.addEventListener("mousedown", (e) => { dragging = true; updateGain(e.clientY); });
       document.addEventListener("mousemove", (e) => { if (dragging) updateGain(e.clientY); });
       document.addEventListener("mouseup", () => { dragging = false; });
-      slider.addEventListener("touchstart", (e) => { dragging = true; updateGain(e.touches[0].clientY); });
-      document.addEventListener("touchmove", (e) => { if (dragging) updateGain(e.touches[0].clientY); });
+      slider.addEventListener("touchstart", (e) => { e.preventDefault(); dragging = true; updateGain(e.touches[0].clientY); }, { passive: false });
+      document.addEventListener("touchmove", (e) => { if (dragging) { e.preventDefault(); updateGain(e.touches[0].clientY); } }, { passive: false });
       document.addEventListener("touchend", () => { dragging = false; });
     });
   }

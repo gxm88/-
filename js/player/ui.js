@@ -163,6 +163,16 @@ window.Player = window.Player || {};
     }
   }
 
+  /* ---- 队列面板 ---- */
+  function toggleQueuePanel() {
+    const panel = document.getElementById("queue-panel");
+    if (!panel) return;
+    panel.classList.toggle("is-open");
+    if (panel.classList.contains("is-open")) {
+      window.Player.renderQueue();
+    }
+  }
+
   /* ---- 音量面板 ---- */
   function toggleVolumePanel() {
     const panel = document.getElementById("volume-panel");
@@ -353,14 +363,11 @@ window.Player = window.Player || {};
     const bq = document.getElementById("btn-queue");
     if (bq && !bq.dataset.bound) {
       bq.dataset.bound = "1";
-      bq.addEventListener("click", () => {
-        const p = document.getElementById("queue-panel");
-        if (p) p.classList.toggle("is-open");
-      });
+      bq.addEventListener("click", toggleQueuePanel);
     }
     // 关闭队列
     const bc = document.getElementById("btn-close-queue");
-    if (bc && !bc.dataset.bound) { bc.dataset.bound = "1"; bc.addEventListener("click", () => document.getElementById("queue-panel").classList.remove("is-open")); }
+    if (bc && !bc.dataset.bound) { bc.dataset.bound = "1"; bc.addEventListener("click", () => { const p = document.getElementById("queue-panel"); if (p) p.classList.remove("is-open"); }); }
 
     // 一键清空队列
     const bclear = document.getElementById("btn-clear-queue");
@@ -452,8 +459,8 @@ window.Player = window.Player || {};
       vol.addEventListener("mousedown", (e) => { dragging = true; updateVol(e.clientX); });
       document.addEventListener("mousemove", (e) => { if (dragging) updateVol(e.clientX); });
       document.addEventListener("mouseup", () => { dragging = false; });
-      vol.addEventListener("touchstart", (e) => { dragging = true; updateVol(e.touches[0].clientX); });
-      document.addEventListener("touchmove", (e) => { if (dragging) updateVol(e.touches[0].clientX); });
+      vol.addEventListener("touchstart", (e) => { e.preventDefault(); dragging = true; updateVol(e.touches[0].clientX); }, { passive: false });
+      document.addEventListener("touchmove", (e) => { if (dragging) { e.preventDefault(); updateVol(e.touches[0].clientX); } }, { passive: false });
       document.addEventListener("touchend", () => { dragging = false; });
     }
 
@@ -542,6 +549,7 @@ window.Player = window.Player || {};
   window.Player.renderControls = renderControls;
   window.Player.renderProgress = renderProgress;
   window.Player.renderVolume = renderVolume;
+  window.Player.toggleQueuePanel = toggleQueuePanel;
   window.Player.toggleVolumePanel = toggleVolumePanel;
   window.Player.renderVolumePanel = renderVolumePanel;
   window.Player.renderPlayModeButton = renderPlayModeButton;

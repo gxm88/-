@@ -67,6 +67,10 @@ window.Player = window.Player || {};
     const volBtn = document.getElementById("fs-btn-volume");
     if (volBtn) volBtn.addEventListener("click", window.Player.toggleVolumePanel);
 
+    // 队列按钮
+    const queueBtn = document.getElementById("fs-btn-queue");
+    if (queueBtn) queueBtn.addEventListener("click", window.Player.toggleQueuePanel);
+
     // 进度条
     bindFSProgress();
   }
