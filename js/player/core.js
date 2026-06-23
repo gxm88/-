@@ -157,19 +157,19 @@ window.Player = window.Player || {};
   function toggleMute() {
     state.muted = !state.muted;
     window.Player.renderVolume();
-    window.Player.renderVolumePanel();
+    window.Player.updateVolumePanel();
   }
 
   function setVolume(v) {
     state.volume = Math.max(0, Math.min(1, v));
     if (state.volume > 0) state.muted = false;
     window.Player.renderVolume();
-    window.Player.renderVolumePanel();
+    window.Player.updateVolumePanel();
   }
 
   function setAppVolume(v) {
     state.appVolume = Math.max(0, Math.min(1, v));
-    window.Player.renderVolumePanel();
+    window.Player.updateVolumePanel();
   }
 
   /* ---- 睡眠定时器 ---- */

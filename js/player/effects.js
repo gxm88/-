@@ -94,6 +94,7 @@ window.Player = window.Player || {};
         const rect = track.getBoundingClientRect();
         const pct = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
         state.eq.bands[idx].gain = Math.round((pct * 24 - 12) * 10) / 10;
+        const wasCustom = state.eq.preset === "custom";
         state.eq.preset = "custom";
 
         if (rafId) return; // throttle with rAF
@@ -111,21 +112,22 @@ window.Player = window.Player || {};
             const g = state.eq.bands[idx].gain;
             gainLabel.textContent = `${g > 0 ? "+" : ""}${g} dB`;
           }
-          // Update preset buttons active state
-          const presetBtns = panel.querySelectorAll(".eq-preset-btn");
-          presetBtns.forEach(btn => btn.classList.toggle("is-active", btn.dataset.preset === "custom"));
-          // Update preset name in header
-          const presetName = panel.querySelector(".eq-preset-name");
-          if (presetName) presetName.textContent = "自定义";
+          // 只在首次变为自定义时更新预设按钮状态，避免每次 rAF 都触发 DOM 重排
+          if (!wasCustom) {
+            const presetBtns = panel.querySelectorAll(".eq-preset-btn");
+            presetBtns.forEach(btn => btn.classList.toggle("is-active", btn.dataset.preset === "custom"));
+            const presetName = panel.querySelector(".eq-preset-name");
+            if (presetName) presetName.textContent = "自定义";
+          }
         });
       };
 
-      slider.addEventListener("mousedown", (e) => { dragging = true; updateGain(e.clientY); });
+      slider.addEventListener("mousedown", (e) => { dragging = true; slider.classList.add("is-dragging"); updateGain(e.clientY); });
       document.addEventListener("mousemove", (e) => { if (dragging) updateGain(e.clientY); });
-      document.addEventListener("mouseup", () => { dragging = false; });
-      slider.addEventListener("touchstart", (e) => { e.preventDefault(); dragging = true; updateGain(e.touches[0].clientY); }, { passive: false });
+      document.addEventListener("mouseup", () => { dragging = false; slider.classList.remove("is-dragging"); });
+      slider.addEventListener("touchstart", (e) => { e.preventDefault(); dragging = true; slider.classList.add("is-dragging"); updateGain(e.touches[0].clientY); }, { passive: false });
       document.addEventListener("touchmove", (e) => { if (dragging) { e.preventDefault(); updateGain(e.touches[0].clientY); } }, { passive: false });
-      document.addEventListener("touchend", () => { dragging = false; });
+      document.addEventListener("touchend", () => { dragging = false; slider.classList.remove("is-dragging"); });
     });
   }
 

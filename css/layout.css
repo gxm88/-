@@ -560,6 +560,9 @@
   width: 18px; height: 6px; background: var(--accent); border-radius: 999px;
   transition: bottom var(--t-fast);
 }
+/* 拖拽时禁用 transition，避免与 rAF 更新冲突导致抖动 */
+.eq-band-slider.is-dragging .eq-band-fill { transition: none; }
+.eq-band-slider.is-dragging .eq-band-thumb { transition: none; }
 .eq-band-gain { font-size: 10px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .eq-band-label { font-size: 10px; color: var(--text-3); font-weight: 500; }
 

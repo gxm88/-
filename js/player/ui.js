@@ -203,7 +203,7 @@ window.Player = window.Player || {};
         <div class="vol-row">
           <div class="vol-row-label">
             <span>全局音量</span>
-            <span class="vol-val">${Math.round(effVol * 100)}%</span>
+            <span class="vol-val" id="vol-panel-val">${Math.round(effVol * 100)}%</span>
           </div>
           <div class="vol-row-bar-wrap">
             <button class="vol-mute-btn ${state.muted ? 'is-muted' : ''}" id="vol-mute-btn">
@@ -212,17 +212,17 @@ window.Player = window.Player || {};
                 : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a5 5 0 0 1 0 6M19 7a8 8 0 0 1 0 10"></path></svg>'}
             </button>
             <div class="vol-row-bar" id="vol-panel-bar">
-              <div class="vol-row-fill" style="width:${(effVol * 100).toFixed(0)}%"></div>
+              <div class="vol-row-fill" id="vol-panel-fill" style="width:${(effVol * 100).toFixed(0)}%"></div>
             </div>
           </div>
         </div>
         <div class="vol-row">
           <div class="vol-row-label">
             <span>软件音量</span>
-            <span class="vol-val">${Math.round(state.appVolume * 100)}%</span>
+            <span class="vol-val" id="app-vol-val">${Math.round(state.appVolume * 100)}%</span>
           </div>
           <div class="vol-row-bar" id="app-vol-bar">
-            <div class="vol-row-fill" style="width:${(state.appVolume * 100).toFixed(0)}%"></div>
+            <div class="vol-row-fill" id="app-vol-fill" style="width:${(state.appVolume * 100).toFixed(0)}%"></div>
           </div>
         </div>
       </div>
@@ -232,29 +232,98 @@ window.Player = window.Player || {};
     const muteBtn = panel.querySelector("#vol-mute-btn");
     if (muteBtn) muteBtn.addEventListener("click", window.Player.toggleMute);
 
-    // 绑定全局音量条
+    // 绑定全局音量条：点击 + 拖拽
     const volBar = panel.querySelector("#vol-panel-bar");
     if (volBar) {
       volBar.addEventListener("click", (e) => {
         const rect = volBar.getBoundingClientRect();
-        const p = (e.clientX - rect.left) / rect.width;
+        const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         window.Player.setVolume(p);
       });
+      bindVolumeSliderDrag(volBar, window.Player.setVolume);
     }
 
-    // 绑定软件音量条
+    // 绑定软件音量条：点击 + 拖拽
     const appVolBar = panel.querySelector("#app-vol-bar");
     if (appVolBar) {
       appVolBar.addEventListener("click", (e) => {
         const rect = appVolBar.getBoundingClientRect();
-        const p = (e.clientX - rect.left) / rect.width;
+        const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         window.Player.setAppVolume(p);
       });
+      bindVolumeSliderDrag(appVolBar, window.Player.setAppVolume);
     }
 
     // 绑定关闭
     const close = panel.querySelector("#vol-panel-close");
     if (close) close.addEventListener("click", () => panel.classList.remove("is-open"));
+  }
+
+  // 增量更新音量面板（避免重建 DOM 导致已移除元素被误判为外部点击）
+  function updateVolumePanel() {
+    const panel = document.getElementById("volume-panel");
+    if (!panel || !panel.classList.contains("is-open")) return;
+    const state = window.Player.state;
+
+    const effVol = state.muted ? 0 : state.volume;
+    const fill = document.getElementById("vol-panel-fill");
+    const val = document.getElementById("vol-panel-val");
+    const appFill = document.getElementById("app-vol-fill");
+    const appVal = document.getElementById("app-vol-val");
+    const muteBtn = document.getElementById("vol-mute-btn");
+
+    if (fill) fill.style.width = `${(effVol * 100).toFixed(0)}%`;
+    if (val) val.textContent = `${Math.round(effVol * 100)}%`;
+    if (appFill) appFill.style.width = `${(state.appVolume * 100).toFixed(0)}%`;
+    if (appVal) appVal.textContent = `${Math.round(state.appVolume * 100)}%`;
+    if (muteBtn) muteBtn.classList.toggle("is-muted", state.muted);
+  }
+
+  // 音量条拖拽支持
+  function bindVolumeSliderDrag(sliderEl, setterFn) {
+    let dragging = false;
+    let rafId = null;
+
+    const update = (clientX) => {
+      const rect = sliderEl.getBoundingClientRect();
+      const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      setterFn(p);
+    };
+
+    sliderEl.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      dragging = true;
+      update(e.clientX);
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        update(e.clientX);
+      });
+    });
+
+    document.addEventListener("mouseup", () => { dragging = false; });
+
+    sliderEl.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      dragging = true;
+      update(e.touches[0].clientX);
+    }, { passive: false });
+
+    document.addEventListener("touchmove", (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        update(e.touches[0].clientX);
+      });
+    }, { passive: false });
+
+    document.addEventListener("touchend", () => { dragging = false; });
   }
 
   /* ---- 播放模式按钮 ---- */
@@ -563,6 +632,7 @@ window.Player = window.Player || {};
   window.Player.toggleQueuePanel = toggleQueuePanel;
   window.Player.toggleVolumePanel = toggleVolumePanel;
   window.Player.renderVolumePanel = renderVolumePanel;
+  window.Player.updateVolumePanel = updateVolumePanel;
   window.Player.renderPlayModeButton = renderPlayModeButton;
   window.Player.renderSleepButton = renderSleepButton;
   window.Player.renderSleepPanel = renderSleepPanel;
