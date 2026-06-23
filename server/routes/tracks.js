@@ -4,6 +4,21 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+function mapTrack(t) {
+  return {
+    id: String(t.id),
+    title: t.title || '未知歌名',
+    artist: t.artist || '未知歌手',
+    album: t.album || '未知专辑',
+    genre: t.genre || '其他',
+    dur: t.duration || 0,
+    year: t.created_at ? new Date(t.created_at).getFullYear() : 2024,
+    cover: t.cover_path || '',
+    path: t.path || '',
+    play_count: t.play_count || 0,
+  };
+}
+
 // GET /tracks
 router.get('/', (req, res) => {
   try {
@@ -16,7 +31,7 @@ router.get('/', (req, res) => {
     } else {
       tracks = db.prepare('SELECT * FROM tracks').all();
     }
-    res.json({ data: tracks, total: tracks.length });
+    res.json({ data: tracks.map(mapTrack), total: tracks.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -29,7 +44,7 @@ router.get('/:id', (req, res) => {
     if (!track) {
       return res.status(404).json({ error: 'Track not found' });
     }
-    res.json({ data: track });
+    res.json({ data: mapTrack(track) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -62,7 +77,7 @@ router.post('/:id/play', (req, res) => {
     }
 
     const updated = db.prepare('SELECT * FROM tracks WHERE id = ?').get(id);
-    res.json({ data: updated });
+    res.json({ data: mapTrack(updated) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

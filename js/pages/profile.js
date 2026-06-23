@@ -16,10 +16,10 @@ window.Pages = window.Pages || {};
     return `
       <section class="page-section anim-fade-up">
         <div class="profile-head">
-          <div class="avatar-lg">L</div>
+          <div class="avatar-lg">${userProfile.avatar}</div>
           <div>
-            <div class="ph-type">Listener · 普通用户</div>
-            <h2 class="profile-name">Listener_01</h2>
+            <div class="ph-type">Listener · ${userProfile.role === 'admin' ? '管理员' : '普通用户'}</div>
+            <h2 class="profile-name">${userProfile.username}</h2>
             <p class="profile-bio">在地铁和深夜咖啡馆听歌 · 偏爱 Dream-pop 和慢爵士。</p>
             <div class="profile-meta">
               <span>${userProfile.listen_minutes} 分钟总收听</span>

@@ -3,11 +3,26 @@ const { db } = require('../db');
 
 const router = express.Router();
 
+function mapTrack(t) {
+  return {
+    id: String(t.id),
+    title: t.title || '未知歌名',
+    artist: t.artist || '未知歌手',
+    album: t.album || '未知专辑',
+    genre: t.genre || '其他',
+    dur: t.duration || 0,
+    year: t.created_at ? new Date(t.created_at).getFullYear() : 2024,
+    cover: t.cover_path || '',
+    path: t.path || '',
+    play_count: t.play_count || 0,
+  };
+}
+
 // GET /charts - return all tracks as charts
 router.get('/charts', (req, res) => {
   try {
     const tracks = db.prepare('SELECT * FROM tracks ORDER BY play_count DESC').all();
-    res.json({ data: tracks, total: tracks.length });
+    res.json({ data: tracks.map(mapTrack), total: tracks.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -19,7 +34,14 @@ router.get('/artists', (req, res) => {
     const artists = db.prepare(
       'SELECT artist, COUNT(*) as track_count FROM tracks WHERE artist IS NOT NULL GROUP BY artist ORDER BY artist'
     ).all();
-    res.json({ data: artists, total: artists.length });
+    res.json({
+      data: artists.map((r, i) => ({
+        id: `a${i + 1}`,
+        name: r.artist || '未知歌手',
+        track_count: r.track_count,
+      })),
+      total: artists.length,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -39,7 +61,7 @@ router.get('/artists/:id', (req, res) => {
         name: artistName,
         track_count: tracks.length,
         total_plays: totalPlays,
-        tracks,
+        tracks: tracks.map(mapTrack),
       },
     });
   } catch (err) {
@@ -53,7 +75,15 @@ router.get('/albums', (req, res) => {
     const albums = db.prepare(
       'SELECT album, artist, COUNT(*) as track_count FROM tracks WHERE album IS NOT NULL GROUP BY album ORDER BY album'
     ).all();
-    res.json({ data: albums, total: albums.length });
+    res.json({
+      data: albums.map((r, i) => ({
+        id: `al${i + 1}`,
+        name: r.album || '未知专辑',
+        artist: r.artist || '未知歌手',
+        track_count: r.track_count,
+      })),
+      total: albums.length,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -74,7 +104,7 @@ router.get('/albums/:id', (req, res) => {
         artist: tracks[0].artist,
         track_count: tracks.length,
         total_duration: totalDuration,
-        tracks,
+        tracks: tracks.map(mapTrack),
       },
     });
   } catch (err) {
@@ -86,7 +116,13 @@ router.get('/albums/:id', (req, res) => {
 router.get('/folders', (req, res) => {
   try {
     const folders = db.prepare('SELECT * FROM folders').all();
-    res.json({ data: folders, total: folders.length });
+    res.json({
+      data: folders.map((f, i) => ({
+        id: `f${i + 1}`,
+        ...f,
+      })),
+      total: folders.length,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -104,7 +140,7 @@ router.get('/folders/*', (req, res) => {
       data: {
         path: folderPath,
         folder: folder || null,
-        tracks,
+        tracks: tracks.map(mapTrack),
         total: tracks.length,
       },
     });
@@ -140,9 +176,16 @@ router.get('/search', (req, res) => {
 
     res.json({
       data: {
-        tracks,
-        albums,
-        artists,
+        tracks: tracks.map(mapTrack),
+        albums: albums.map((r, i) => ({
+          id: `al${i + 1}`,
+          name: r.album || '未知专辑',
+          artist: r.artist || '未知歌手',
+        })),
+        artists: artists.map((r, i) => ({
+          id: `a${i + 1}`,
+          name: r.artist || '未知歌手',
+        })),
         playlists,
       },
     });

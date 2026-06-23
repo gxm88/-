@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const { db } = require('../db');
 const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
@@ -11,8 +13,24 @@ router.use(admin);
 // GET /scanner/folders
 router.get('/folders', (req, res) => {
   try {
+    const musicDir = path.resolve(__dirname, '..', '..', 'music');
     const folders = db.prepare('SELECT * FROM folders').all();
-    res.json({ data: folders, total: folders.length });
+    
+    let musicDirInfo = null;
+    if (fs.existsSync(musicDir)) {
+      const files = fs.readdirSync(musicDir).filter(f => {
+        const ext = path.extname(f).toLowerCase();
+        return ['.mp3', '.wav', '.flac', '.ogg', '.aac', '.m4a', '.wma', '.opus'].includes(ext);
+      });
+      const trackCount = db.prepare('SELECT COUNT(*) as count FROM tracks').get().count;
+      musicDirInfo = {
+        path: '/music',
+        file_count: files.length,
+        db_track_count: trackCount,
+      };
+    }
+
+    res.json({ data: folders, total: folders.length, music_dir: musicDirInfo });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -54,30 +72,54 @@ router.delete('/folders/:id', (req, res) => {
   }
 });
 
-// POST /scanner/scan/:folderId
-router.post('/scan/:folderId', (req, res) => {
+// POST /scanner/scan
+router.post('/scan', (req, res) => {
   try {
-    const { folderId } = req.params;
-    const folder = db.prepare('SELECT * FROM folders WHERE id = ?').get(folderId);
-    if (!folder) {
-      return res.status(404).json({ error: 'Folder not found' });
+    const musicDir = path.resolve(__dirname, '..', '..', 'music');
+    if (!fs.existsSync(musicDir)) {
+      fs.mkdirSync(musicDir, { recursive: true });
     }
 
-    // Simulate scan: random track count between 10 and 100
-    const trackCount = Math.floor(Math.random() * 91) + 10;
+    const files = fs.readdirSync(musicDir).filter(f => {
+      const ext = path.extname(f).toLowerCase();
+      return ['.mp3', '.wav', '.flac', '.ogg', '.aac', '.m4a', '.wma', '.opus'].includes(ext);
+    });
 
-    db.prepare('UPDATE folders SET track_count = ?, last_scan = datetime(?), status = ? WHERE id = ?')
-      .run(trackCount, 'now', 'active', folderId);
+    const existing = db.prepare('SELECT path FROM tracks').all().map(r => r.path);
+    
+    const insertTrack = db.prepare(
+      'INSERT INTO tracks (title, artist, album, genre, duration, path, play_count) VALUES (?, ?, ?, ?, ?, ?, 0)'
+    );
 
-    db.prepare('INSERT INTO scan_logs (folder_id, type, message) VALUES (?, ?, ?)')
-      .run(folderId, 'info', `Scan started for ${folder.path}`);
-    db.prepare('INSERT INTO scan_logs (folder_id, type, message) VALUES (?, ?, ?)')
-      .run(folderId, 'info', `Found ${trackCount} audio files`);
-    db.prepare('INSERT INTO scan_logs (folder_id, type, message) VALUES (?, ?, ?)')
-      .run(folderId, 'success', `Successfully scanned ${trackCount} tracks`);
+    let added = 0;
+    let skipped = 0;
 
-    const updated = db.prepare('SELECT * FROM folders WHERE id = ?').get(folderId);
-    res.json(updated);
+    for (const file of files) {
+      const fullPath = `/music/${file}`;
+      if (existing.includes(fullPath)) {
+        skipped++;
+        continue;
+      }
+
+      const ext = path.extname(file);
+      const name = path.basename(file, ext);
+      // Try to parse "artist - title" or "title" format
+      let title = name;
+      let artist = '未知歌手';
+      if (name.includes(' - ')) {
+        const parts = name.split(' - ');
+        artist = parts[0].trim();
+        title = parts.slice(1).join(' - ').trim();
+      }
+      
+      insertTrack.run(title, artist, '未知专辑', '其他', 180, fullPath);
+      added++;
+    }
+
+    res.json({
+      data: { added, skipped, total: files.length },
+      message: `扫描完成: 新增 ${added} 首, 跳过 ${skipped} 首 (已存在)`,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

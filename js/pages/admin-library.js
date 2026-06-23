@@ -7,6 +7,21 @@ window.Pages = window.Pages || {};
     const folders = foldersRes.data;
     return `
       <div class="admin-panel" style="margin-bottom:14px">
+        <h3>手动上传音乐</h3>
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">支持 MP3 / WAV / FLAC / OGG / AAC / M4A 格式，单文件最大 200MB</p>
+        <div class="upload-zone" id="upload-zone" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all var(--t-fast);background:var(--bg-3)">
+          <div style="font-size:32px;margin-bottom:8px;color:var(--text-dim)">📁</div>
+          <div style="font-size:14px;color:var(--text-2);margin-bottom:4px">拖拽音频文件到此处</div>
+          <div style="font-size:12px;color:var(--text-3)">或点击选择文件</div>
+          <input type="file" id="upload-input" accept=".mp3,.wav,.flac,.ogg,.aac,.m4a,.wma,.opus" multiple style="display:none" />
+        </div>
+        <div id="upload-list" style="margin-top:12px;display:none">
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:8px">上传队列</div>
+          <div id="upload-items"></div>
+        </div>
+        <div id="upload-result" style="margin-top:12px;display:none"></div>
+      </div>
+      <div class="admin-panel" style="margin-bottom:14px">
         <h3>目录挂载</h3>
         <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">将宿主机目录映射到容器。修改后需重新扫描。</p>
         <div class="data-table" style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
@@ -51,5 +66,73 @@ window.Pages = window.Pages || {};
         </div>
       </div>
     `;
+
+    setTimeout(() => {
+      const zone = document.getElementById('upload-zone');
+      const input = document.getElementById('upload-input');
+      const list = document.getElementById('upload-list');
+      const items = document.getElementById('upload-items');
+      const result = document.getElementById('upload-result');
+      let selectedFiles = [];
+
+      if (!zone || !input) return;
+
+      zone.addEventListener('click', () => input.click());
+
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.style.borderColor = 'var(--accent)';
+        zone.style.background = 'var(--accent-soft)';
+      });
+
+      zone.addEventListener('dragleave', () => {
+        zone.style.borderColor = 'var(--border)';
+        zone.style.background = 'var(--bg-3)';
+      });
+
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.style.borderColor = 'var(--border)';
+        zone.style.background = 'var(--bg-3)';
+        handleFiles(e.dataTransfer.files);
+      });
+
+      input.addEventListener('change', () => handleFiles(input.files));
+
+      function handleFiles(files) {
+        selectedFiles = Array.from(files);
+        if (selectedFiles.length === 0) return;
+        list.style.display = 'block';
+        result.style.display = 'none';
+        items.innerHTML = selectedFiles.map((f, i) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-2);border-radius:8px;margin-bottom:6px;font-size:13px">
+            <span>${f.name} <span style="color:var(--text-3);font-size:11px">(${(f.size / 1024 / 1024).toFixed(1)} MB)</span></span>
+            <span id="upload-status-${i}" style="color:var(--text-3);font-size:11px">就绪</span>
+          </div>
+        `).join('') + `
+          <button id="upload-btn" style="margin-top:8px;padding:8px 18px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;border:none;font-size:13px;cursor:pointer;font-weight:600">上传 ${selectedFiles.length} 个文件</button>
+        `;
+
+        const uploadBtn = document.getElementById('upload-btn');
+        if (uploadBtn) {
+          uploadBtn.addEventListener('click', async () => {
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '上传中...';
+            try {
+              const res = await API.uploadTracks(selectedFiles);
+              result.style.display = 'block';
+              result.innerHTML = `<div style="padding:12px;background:rgba(74,222,128,0.1);border:1px solid var(--good);border-radius:8px;color:var(--good);font-size:13px">✓ ${res.message}</div>`;
+              list.style.display = 'none';
+            } catch (err) {
+              result.style.display = 'block';
+              result.innerHTML = `<div style="padding:12px;background:rgba(248,113,113,0.1);border:1px solid var(--bad);border-radius:8px;color:var(--bad);font-size:13px">✗ 上传失败: ${err.message}</div>`;
+            } finally {
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = `上传 ${selectedFiles.length} 个文件`;
+            }
+          });
+        }
+      }
+    }, 100);
   };
 })();

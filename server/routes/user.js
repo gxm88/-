@@ -18,6 +18,23 @@ function optionalAuth(req) {
   }
 }
 
+// 将数据库 track 字段映射为前端期望格式
+function mapTrack(t) {
+  return {
+    id: String(t.id),
+    title: t.title || '未知歌名',
+    artist: t.artist || '未知歌手',
+    album: t.album || '未知专辑',
+    genre: t.genre || '其他',
+    dur: t.duration || 0,
+    year: t.created_at ? new Date(t.created_at).getFullYear() : 2024,
+    cover: t.cover_path || '',
+    path: t.path || '',
+    play_count: t.play_count || 0,
+    favorited_at: t.favorited_at,
+  };
+}
+
 // GET /favorites - return user's favorite tracks (optional auth)
 router.get('/favorites', (req, res) => {
   try {
@@ -25,9 +42,10 @@ router.get('/favorites', (req, res) => {
     if (!user) {
       return res.json({ data: [], total: 0 });
     }
-    const favorites = db.prepare(
+    const rows = db.prepare(
       'SELECT t.*, f.created_at as favorited_at FROM favorites f JOIN tracks t ON f.track_id = t.id WHERE f.user_id = ? ORDER BY f.created_at DESC'
     ).all(user.id);
+    const favorites = rows.map(mapTrack);
     res.json({ data: favorites, total: favorites.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -67,9 +85,10 @@ router.get('/history', (req, res) => {
     if (!user) {
       return res.json({ data: [], total: 0 });
     }
-    const history = db.prepare(
-      'SELECT ph.*, t.title, t.artist, t.album, t.genre, t.duration, t.cover_path, t.lyrics, t.path, t.play_count FROM play_history ph JOIN tracks t ON ph.track_id = t.id WHERE ph.user_id = ? ORDER BY ph.played_at DESC'
+    const rows = db.prepare(
+      'SELECT ph.*, t.title, t.artist, t.album, t.genre, t.duration, t.cover_path, t.lyrics, t.path, t.play_count, t.created_at FROM play_history ph JOIN tracks t ON ph.track_id = t.id WHERE ph.user_id = ? ORDER BY ph.played_at DESC'
     ).all(user.id);
+    const history = rows.map(mapTrack);
     res.json({ data: history, total: history.length });
   } catch (err) {
     res.status(500).json({ error: err.message });

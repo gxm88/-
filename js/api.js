@@ -248,5 +248,31 @@ const API = (() => {
     // 配置
     getBaseURL: () => BASE,
     setBaseURL: (url) => { /* 允许动态修改 */ },
+
+    // 文件上传
+    uploadTracks: async (files) => {
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append('files', file);
+      }
+      const token = localStorage.getItem('token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      try {
+        const res = await fetch('/api/tracks/upload', {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ message: res.statusText }));
+          throw new Error(err.message || `HTTP ${res.status}`);
+        }
+        return await res.json();
+      } catch (e) {
+        throw e;
+      }
+    },
   };
 })();
