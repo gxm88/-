@@ -42,9 +42,10 @@ window.Player = window.Player || {};
   const PLAY_MODES = [
     { key: "sequential",    icon: "↻", label: "顺序播放",   desc: "按列表顺序依次播放" },
     { key: "repeat-one",    icon: "↺", label: "单曲循环",   desc: "重复播放当前歌曲" },
-    { key: "repeat-list",   icon: "↻₂", label: "列表循环",  desc: "播放完列表后从头再来" },
+    { key: "repeat-list",   icon: "↻₂", label: "列表循环",   desc: "播放完列表后从头再来" },
     { key: "shuffle",       icon: "⇄", label: "随机播放",   desc: "随机打乱顺序播放" },
     { key: "unique-shuffle",icon: "⇅", label: "无重复随机", desc: "每首只播一次，播完停止" },
+    { key: "reverse",       icon: "↶", label: "逆序播放",   desc: "从最后一首倒序播放" },
   ];
 
   // ---- EQ 预设 ----
@@ -250,6 +251,15 @@ window.Player = window.Player || {};
           state.index = next;
         }
         break;
+      case "reverse":
+        if (state.index <= 0) {
+          state.playing = false;
+          if (state.timer) { clearInterval(state.timer); state.timer = null; }
+          window.Player.renderControls();
+          return;
+        }
+        state.index--;
+        break;
       case "sequential":
       default:
         if (state.index >= state.queue.length - 1) {
@@ -308,7 +318,12 @@ window.Player = window.Player || {};
       window.Player.renderProgress();
       return;
     }
-    state.index = (state.index - 1 + state.queue.length) % state.queue.length;
+    if (state.playMode === "reverse") {
+      // 逆序模式下 prev = 下一首
+      state.index = (state.index + 1) % state.queue.length;
+    } else {
+      state.index = (state.index - 1 + state.queue.length) % state.queue.length;
+    }
     playIndex(state.index);
   }
 

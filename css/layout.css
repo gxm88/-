@@ -1008,7 +1008,8 @@
   .volume-panel, .sleep-panel {
     right: 8px; left: 8px; width: auto; bottom: 130px;
   }
-  .eq-panel { right: 8px; left: 8px; width: auto; bottom: 130px; }
+  .eq-panel { right: 8px; left: 8px; width: auto; bottom: 130px; transform: none; }
+  .eq-panel.is-open { transform: none; }
 
   /* === 队列浮层 === */
   .queue-panel {
